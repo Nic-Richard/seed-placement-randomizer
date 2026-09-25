@@ -31,9 +31,8 @@ public sealed class DishView : Control
     public static readonly StyledProperty<bool> IsEmptyGhostProperty =
         AvaloniaProperty.Register<DishView, bool>(nameof(IsEmptyGhost));
 
-    /// <summary>Inherited, so setting it once on the window restyles every dish.</summary>
-    public static readonly AttachedProperty<SeedKind> SeedKindProperty =
-        AvaloniaProperty.RegisterAttached<DishView, Visual, SeedKind>("SeedKind", inherits: true);
+    public static readonly StyledProperty<SeedKind> SeedKindProperty =
+        AvaloniaProperty.Register<DishView, SeedKind>(nameof(SeedKind));
 
     public static readonly StyledProperty<Color> AccentProperty =
         AvaloniaProperty.Register<DishView, Color>(nameof(Accent), Color.Parse("#A8DB6E"));
@@ -124,10 +123,6 @@ public sealed class DishView : Control
         get => GetValue(GhostProperty);
         set => SetValue(GhostProperty, value);
     }
-
-    public static SeedKind GetSeedKind(Visual visual) => visual.GetValue(SeedKindProperty);
-
-    public static void SetSeedKind(Visual visual, SeedKind value) => visual.SetValue(SeedKindProperty, value);
 
     public static double RevealEnd(int seedCount) => Math.Max(0, seedCount - 1) * Stagger + 1;
 

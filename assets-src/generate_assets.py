@@ -39,8 +39,8 @@ SEED_KINDS = {
                     spread=(0.04, 0.04, 0.035), pattern="ribs", relief=0.22, bend=0.16),
     "radish": dict(aspect=1.18, point=((0.0, 0.06), (0.0, 0.04)), color=(0.55, 0.32, 0.21),
                    spread=(0.05, 0.035, 0.025), pattern="mottle", relief=0.42, bend=0.05),
-    "sunflower": dict(aspect=2.05, point=((0.46, 0.56), (0.0, 0.05)), color=(0.12, 0.12, 0.13),
-                      spread=(0.02, 0.02, 0.02), pattern="stripes", relief=0.22, bend=0.06),
+    "barnyard-grass": dict(aspect=1.75, point=((0.34, 0.44), (0.02, 0.08)), color=(0.66, 0.58, 0.38),
+                           spread=(0.05, 0.05, 0.04), pattern="hull", relief=0.36, bend=0.05),
 }
 SEED_VARIANTS = 6
 SEED_SPRITE = 240
@@ -99,13 +99,13 @@ def seed(kind, variant):
         color *= (1 - 0.12 * ribs)[..., None]
     elif pattern == "mottle":
         blotch = smooth_noise(rng, (size, size), 4 * SS) * 0.16
-    elif pattern == "stripes":
-        wobble = smooth_noise(rng, (size, size), 20 * SS) * 0.06
-        band = 0.5 + 0.5 * np.cos((across + wobble) * np.pi * 2.6 + rng.uniform(0, np.pi))
-        streak = np.clip((band - 0.78) / 0.14, 0, 1) * np.clip(0.75 + smooth_noise(rng, (size, size), 8 * SS), 0, 1)
-        stripe = np.array([0.80, 0.80, 0.76])
-        color = color * (1 - streak[..., None]) + stripe * streak[..., None]
-        grain *= 1.8
+    elif pattern == "hull":
+        veins = 0.5 + 0.5 * np.cos(across * np.pi * 5.5)
+        height_map = height_map * (1 - 0.06 * veins)
+        color *= (1 - 0.10 * veins)[..., None]
+        rim = np.clip((rel - 0.72) / 0.22, 0, 1) * (rel < 1)
+        color *= 1 - rim[..., None] * np.array([0.22, 0.24, 0.26])
+        blotch *= 1.6
 
     color = color * (1 + blotch + grain)[..., None]
     height_map = gaussian_filter(height_map, SS)

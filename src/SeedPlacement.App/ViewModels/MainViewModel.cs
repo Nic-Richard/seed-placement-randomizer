@@ -244,7 +244,7 @@ public sealed class MainViewModel : ObservableObject
         {
             var settings = new PlacementSettings(SeedCount, SpacingMm);
             var layout = await Task.Run(() => code is { } c ? SeedSampler.Generate(c) : SeedSampler.Generate(settings));
-            var slot = _rack.Shelve(layout);
+            var slot = _rack.Shelve(layout, SeedKindInfo.Of(SeedKind).Name);
             var dish = new DishItem(_rack, slot, SaveRun);
             Slots[slot].Dish = dish;
             Bench = dish;

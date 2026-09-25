@@ -86,6 +86,7 @@ public sealed partial class MainWindow : Window
         BenchEmptyText.IsVisible = false;
         BenchDishView.IsEmptyGhost = false;
         BenchDishView.Reveal = double.MaxValue;
+        BenchDishView.SeedKind = dish.Kind;
         BenchDishView.Layout = dish.Layout;
         BenchHost.Opacity = 1;
         CaptionTape.Opacity = 1;
@@ -148,6 +149,7 @@ public sealed partial class MainWindow : Window
         BenchEmptyText.IsVisible = false;
         bench.IsEmptyGhost = false;
         bench.Reveal = 0;
+        bench.SeedKind = e.Dish.Kind;
         bench.Layout = e.Dish.Layout;
         CaptionTape.Opacity = 0;
 
@@ -178,7 +180,7 @@ public sealed partial class MainWindow : Window
         var to = BoundsIn(target, FlightLayer);
         if (from is not { } start || to is not { } end) return;
 
-        var ghost = new DishView { Layout = e.Dish.Layout, Width = start.Width, Height = start.Height };
+        var ghost = new DishView { Layout = e.Dish.Layout, SeedKind = e.Dish.Kind, Width = start.Width, Height = start.Height };
         Canvas.SetLeft(ghost, start.X);
         Canvas.SetTop(ghost, start.Y);
         FlightLayer.Children.Add(ghost);
@@ -215,7 +217,7 @@ public sealed partial class MainWindow : Window
         if (slotButton is null || BoundsIn(slotButton, FlightLayer) is not { } rect) return;
         var delay = TimeSpan.FromMilliseconds(45 * _pendingRemovals++);
 
-        var ghost = new DishView { Layout = e.Dish.Layout, Width = rect.Width, Height = rect.Height };
+        var ghost = new DishView { Layout = e.Dish.Layout, SeedKind = e.Dish.Kind, Width = rect.Width, Height = rect.Height };
         Canvas.SetLeft(ghost, rect.X);
         Canvas.SetTop(ghost, rect.Y);
         FlightLayer.Children.Add(ghost);

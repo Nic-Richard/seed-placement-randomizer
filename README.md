@@ -13,8 +13,8 @@ macOS and is built to be shown on a projector as well as used at the bench.
 - Gives every dish a layout code, such as `RS8V-BTJ0`. Enter a code to place that exact dish again
 - Labels each dish on a strip of tape. Click the label to rename a dish, such as "Control A"
 - Opens any dish in an inspector with numbered seeds and their coordinates in millimetres
-- Draws seeds as cucumber, wheat, lettuce, radish or sunflower, to scale. This only changes how they
-  look
+- Records a seed type for each dish (cucumber, wheat, lettuce, radish or barnyard grass) and draws
+  its seeds to scale, so concurrent experiments can share one rack. The type never changes placement
 - Exports a run as a CSV of seed positions, a picture of the rack, and printable 1:1 templates to
   set each dish on
 - Saves the run as you go and restores it the next time the app opens

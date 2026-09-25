@@ -29,7 +29,12 @@ vm.SelectedPalette = Palette.Default;
 
 Pump(300);
 if (!options) Save("empty");
-for (var i = 0; i < 7; i++) await Generate(2800);
+var mix = new[] { SeedKind.Wheat, SeedKind.Wheat, SeedKind.Wheat, SeedKind.Radish, SeedKind.Radish, SeedKind.BarnyardGrass, SeedKind.Cucumber };
+foreach (var kind in mix)
+{
+    vm.SeedKind = kind;
+    await Generate(2800);
+}
 var labels = new[] { "Control A", "Control B", "Treated A" };
 foreach (var (slot, label) in vm.Slots.Where(s => s.HasDish).OrderBy(s => s.Dish!.Number).Zip(labels))
 {
@@ -57,8 +62,16 @@ foreach (var palette in Palette.All)
 vm.SelectedPalette = Palette.Default;
 foreach (var kind in SeedKindInfo.All)
 {
+    if (vm.IsRackFull || vm.Occupied > 8)
+    {
+        vm.ClearRackCommand.Execute(null);
+        vm.ClearRackCommand.Execute(null);
+        Pump(500);
+    }
     vm.SeedKind = kind.Kind;
-    Inspect();
+    await Generate(2800);
+    vm.Inspect(vm.Slots[vm.Bench!.Slot]);
+    Pump(700);
     Save(Path.Combine("seeds", kind.AssetKey));
     CloseInspector();
 }

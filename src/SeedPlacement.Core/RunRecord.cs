@@ -19,12 +19,12 @@ public sealed record RunRecord(int NextNumber, IReadOnlyList<RunRecord.Dish> Dis
 
     public int Version { get; init; } = CurrentVersion;
 
-    public sealed record Dish(int Slot, int Number, string Code, string? Label);
+    public sealed record Dish(int Slot, int Number, string Code, string? Label, string? SeedType = null);
 
     public static RunRecord From(Rack rack) => new(
         rack.NextNumber,
         rack.Slots
-            .Select((d, slot) => d is null ? null : new Dish(Rack.SlotNumber(slot), d.Number, d.Layout.Code.ToString(), d.Label))
+            .Select((d, slot) => d is null ? null : new Dish(Rack.SlotNumber(slot), d.Number, d.Layout.Code.ToString(), d.Label, d.SeedType))
             .OfType<Dish>()
             .ToList());
 
@@ -34,7 +34,7 @@ public sealed record RunRecord(int NextNumber, IReadOnlyList<RunRecord.Dish> Dis
         foreach (var d in Dishes)
         {
             if (!LayoutCode.TryParse(d.Code, out var code)) throw new FormatException($"'{d.Code}' is not a layout code.");
-            dishes.Add((d.Slot - 1, new ShelvedDish(d.Number, SeedSampler.Generate(code), d.Label)));
+            dishes.Add((d.Slot - 1, new ShelvedDish(d.Number, SeedSampler.Generate(code), d.Label, d.SeedType)));
         }
         rack.Restore(dishes, NextNumber);
     }

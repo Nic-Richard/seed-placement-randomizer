@@ -1,3 +1,4 @@
+using SeedPlacement.App.Controls;
 using SeedPlacement.Core;
 
 namespace SeedPlacement.App.ViewModels;
@@ -23,6 +24,8 @@ public sealed class DishItem : ObservableObject
 
     public DishLayout Layout => _dish.Layout;
 
+    public SeedKind Kind => SeedKindInfo.Named(_dish.SeedType).Kind;
+
     public int MaxLabelLength => ShelvedDish.MaxLabelLength;
 
     /// <summary>The label written on the dish's tape. Clearing it restores "Dish N".</summary>
@@ -46,13 +49,14 @@ public sealed class DishItem : ObservableObject
 
     public string Code => Layout.Code.ToString();
 
-    public string Summary => Describe(Layout);
+    public string Summary => Describe(Layout, _dish.SeedType);
 
     public string Detail => $"{Summary}. Layout code {Code}";
 
-    public static string Describe(DishLayout layout)
+    public static string Describe(DishLayout layout, string? seedType)
     {
         var n = layout.Seeds.Count;
-        return n == 1 ? "1 seed" : $"{n} seeds, at least {layout.Settings.SpacingMm:0.#} mm apart";
+        var type = SeedKindInfo.Named(seedType).Name.ToLowerInvariant();
+        return n == 1 ? $"1 {type} seed" : $"{n} {type} seeds, at least {layout.Settings.SpacingMm:0.#} mm apart";
     }
 }

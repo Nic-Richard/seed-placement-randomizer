@@ -71,6 +71,18 @@ public class RackTests
     }
 
     [Fact]
+    public void Each_dish_keeps_its_own_seed_type()
+    {
+        var rack = new Rack();
+        var wheat = rack.Shelve(AnyLayout(), "Wheat");
+        var lettuce = rack.Shelve(AnyLayout(), "Lettuce");
+
+        Assert.Equal("Wheat", rack.Slots[wheat]!.SeedType);
+        Assert.Equal("Lettuce", rack.Slots[lettuce]!.SeedType);
+        Assert.Equal("Wheat", rack.Relabel(wheat, "Control A").SeedType);
+    }
+
+    [Fact]
     public void Slot_numbers_start_top_left_and_read_across()
     {
         Assert.Equal(1, Rack.SlotNumber(0));

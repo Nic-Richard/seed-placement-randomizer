@@ -8,8 +8,7 @@
         Icon="avares://SeedPlacementRandomizer/Assets/icon.ico"
         Width="1320" Height="880" MinWidth="1080" MinHeight="740"
         WindowStartupLocation="CenterScreen"
-        Background="{DynamicResource BenchBrush}"
-        c:DishView.SeedKind="{Binding SeedKind}">
+        Background="{DynamicResource BenchBrush}">
 
   <Grid x:Name="Root" Focusable="True" FocusAdorner="{x:Null}" PointerPressed="OnRootPressed"
         Background="{DynamicResource BenchBrush}">
@@ -47,7 +46,7 @@
           </StackPanel>
 
           <ScrollViewer VerticalScrollBarVisibility="Auto" Margin="0,0,-14,0" Padding="0,0,14,0">
-          <StackPanel Spacing="24" Margin="0,0,0,8">
+          <StackPanel Spacing="20" Margin="0,0,0,8">
             <StackPanel Spacing="6">
               <TextBlock Classes="label" Text="Seeds per dish" />
               <Grid ColumnDefinitions="*,Auto">
@@ -79,7 +78,7 @@
 
             <StackPanel Spacing="10">
               <Grid ColumnDefinitions="*,Auto">
-                <TextBlock Classes="label" Text="Seed drawing" />
+                <TextBlock Classes="label" Text="Seed type" />
                 <TextBlock Grid.Column="1" Classes="label" Text="{Binding SeedLookName}" />
               </Grid>
               <ItemsControl ItemsSource="{Binding SeedLooks}" Margin="-3,0">
@@ -97,6 +96,7 @@
                   </DataTemplate>
                 </ItemsControl.ItemTemplate>
               </ItemsControl>
+              <TextBlock Classes="faint" FontSize="12" Text="Applies to the next dish you place." />
             </StackPanel>
 
             <StackPanel Spacing="10">
@@ -208,7 +208,8 @@
                             VerticalAlignment="Center" IsEnabled="{Binding HasDish}" Click="OnSlotClick"
                             RenderTransformOrigin="50%,50%">
                       <Panel>
-                        <c:DishView x:Name="SlotDish" Layout="{Binding Layout}" IsVisible="{Binding HasDish}" />
+                        <c:DishView x:Name="SlotDish" Layout="{Binding Layout}" SeedKind="{Binding Dish.Kind, FallbackValue=Cucumber}"
+                                    IsVisible="{Binding HasDish}" />
                         <c:DishView IsEmptyGhost="True" IsVisible="{Binding !HasDish}" />
                         <Ellipse x:Name="SlotGlow" Stroke="{DynamicResource AccentBrush}" StrokeThickness="3"
                                  Margin="2" Opacity="0" IsHitTestVisible="False" />
@@ -243,7 +244,8 @@
                PointerExited="OnStageExited">
           <Viewbox Stretch="Uniform" ClipToBounds="False">
             <Panel x:Name="InspectTilt" Width="640" Height="640" RenderTransformOrigin="50%,50%">
-              <c:DishView x:Name="InspectDish" Layout="{Binding Layout, FallbackValue={x:Null}}" ShowNumbers="True" />
+              <c:DishView x:Name="InspectDish" Layout="{Binding Layout, FallbackValue={x:Null}}"
+                          SeedKind="{Binding Dish.Kind, FallbackValue=Cucumber}" ShowNumbers="True" />
             </Panel>
           </Viewbox>
         </Panel>

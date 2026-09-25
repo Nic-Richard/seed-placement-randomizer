@@ -1,5 +1,6 @@
 using System.Globalization;
 using Avalonia.Platform;
+using SeedPlacement.App.ViewModels;
 using SeedPlacement.Core;
 using SkiaSharp;
 
@@ -73,7 +74,7 @@ public static class TemplatePdf
 
         var left = area.Left + 40;
         canvas.DrawText($"{dish.DisplayLabel} goes in slot {Rack.SlotNumber(slot)}", left, area.Top + 44, title, text);
-        canvas.DrawText($"{DescribeSeeds(layout)}. Layout code {layout.Code}", left, area.Top + 60, body, muted);
+        canvas.DrawText($"{DishItem.Describe(layout, dish.SeedType)}. Layout code {layout.Code}", left, area.Top + 60, body, muted);
 
         var center = new SKPoint(area.MidX, area.Top + 60 + (area.Height - 60) / 2 + 4);
         var radius = (float)layout.Dish.RadiusMm * PointsPerMm;
@@ -121,11 +122,6 @@ public static class TemplatePdf
         canvas.DrawLine(x + length, y - 4, x + length, y + 4, paint);
         canvas.DrawText("Print at actual size (100%), not fit to page. This line should measure 50 mm.", x + length + 10, y + 3, SKTextAlign.Left, font, paint);
     }
-
-    private static string DescribeSeeds(DishLayout layout) =>
-        layout.Seeds.Count == 1
-            ? "1 seed"
-            : $"{layout.Seeds.Count} seeds, at least {layout.Settings.SpacingMm.ToString("0.#", CultureInfo.InvariantCulture)} mm apart";
 
     private static SKTypeface LoadFont(string file)
     {

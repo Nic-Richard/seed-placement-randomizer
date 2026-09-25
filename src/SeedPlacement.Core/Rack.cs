@@ -2,7 +2,11 @@ using System.Security.Cryptography;
 
 namespace SeedPlacement.Core;
 
-public sealed record ShelvedDish(int Number, DishLayout Layout, string? Label = null)
+/// <summary>
+/// A dish on the rack. <see cref="SeedType"/> records what is growing in it, for labels and exports;
+/// it never affects where the seeds go.
+/// </summary>
+public sealed record ShelvedDish(int Number, DishLayout Layout, string? Label = null, string? SeedType = null)
 {
     public const int MaxLabelLength = 24;
 
@@ -36,12 +40,12 @@ public sealed class Rack
     /// Puts the dish in a uniformly random empty slot. Filling a rack this way gives every assignment of
     /// dishes to slots the same probability. Returns the zero-based slot index.
     /// </summary>
-    public int Shelve(DishLayout layout)
+    public int Shelve(DishLayout layout, string? seedType = null)
     {
         var empty = Enumerable.Range(0, SlotCount).Where(i => _slots[i] is null).ToArray();
         if (empty.Length == 0) throw new InvalidOperationException("The rack is full.");
         var slot = empty[_pick(empty.Length)];
-        _slots[slot] = new ShelvedDish(_nextNumber++, layout);
+        _slots[slot] = new ShelvedDish(_nextNumber++, layout, SeedType: seedType);
         return slot;
     }
 

@@ -6,7 +6,7 @@ namespace SeedPlacement.Core;
 /// <summary>One row per seed, ordered by slot, for spreadsheets and lab records.</summary>
 public static class RunCsv
 {
-    public const string Header = "slot,dish,label,seed,x_mm,y_mm,layout_code,seeds_per_dish,min_spacing_mm";
+    public const string Header = "slot,dish,label,seed_type,seed,x_mm,y_mm,layout_code,seeds_per_dish,min_spacing_mm";
 
     public static string Write(Rack rack)
     {
@@ -22,6 +22,7 @@ public static class RunCsv
                 sb.Append(Rack.SlotNumber(slot)).Append(',')
                     .Append(dish.Number).Append(',')
                     .Append(Escape(dish.DisplayLabel)).Append(',')
+                    .Append(Escape(dish.SeedType ?? "")).Append(',')
                     .Append(i + 1).Append(',')
                     .Append(p.X.ToString("0.0", inv)).Append(',')
                     .Append(p.Y.ToString("0.0", inv)).Append(',')

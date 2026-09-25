@@ -7,7 +7,11 @@ public class RunRecordTests
     private static Rack FilledRack()
     {
         var rack = new Rack();
-        for (uint i = 0; i < 4; i++) rack.Shelve(SeedSampler.Generate(new LayoutCode(i * 977, new PlacementSettings(3 + (int)i, 15 + i))));
+        var types = new[] { "Wheat", "Barnyard grass", null, "Radish" };
+        for (uint i = 0; i < 4; i++)
+        {
+            rack.Shelve(SeedSampler.Generate(new LayoutCode(i * 977, new PlacementSettings(3 + (int)i, 15 + i))), types[i]);
+        }
         var first = Enumerable.Range(0, Rack.SlotCount).First(s => rack.Slots[s] is not null);
         rack.Relabel(first, "Control, \"A\"");
         rack.Remove(Enumerable.Range(0, Rack.SlotCount).Last(s => rack.Slots[s] is not null));
@@ -31,6 +35,7 @@ public class RunRecordTests
             if (a is null || b is null) continue;
             Assert.Equal(a.Number, b.Number);
             Assert.Equal(a.Label, b.Label);
+            Assert.Equal(a.SeedType, b.SeedType);
             Assert.Equal(a.Layout.Seeds, b.Layout.Seeds);
         }
     }
@@ -59,5 +64,6 @@ public class RunRecordTests
         Assert.Equal(RunCsv.Header, lines[0]);
         Assert.Equal(rack.Slots.Sum(d => d?.Layout.Seeds.Count ?? 0), lines.Length - 1);
         Assert.Contains(lines, l => l.Contains("\"Control, \"\"A\"\"\""));
+        Assert.Contains(lines, l => l.Contains(",Barnyard grass,"));
     }
 }
