@@ -4,9 +4,10 @@ namespace SeedPlacement.Tests;
 
 public class RunRecordTests
 {
+    // Slots are filled in order, so the dish removed below is always the radish one.
     private static Rack FilledRack()
     {
-        var rack = new Rack();
+        var rack = new Rack(_ => 0);
         var types = new[] { "Wheat", "Barnyard grass", null, "Radish" };
         for (uint i = 0; i < 4; i++)
         {
