@@ -10,11 +10,14 @@ macOS and is built to be shown on a projector as well as used at the bench.
 
 - Places 1–10 seeds in a 90 mm dish, at least 15–20 mm apart and 10 mm from the rim
 - Shelves each new dish in a random empty slot on a 2 × 5 rack, numbered from the top left
-- Gives every dish a layout code, such as `AQSR-5NA0`, that recreates it exactly
+- Gives every dish a layout code, such as `RS8V-BTJ0`. Enter a code to place that exact dish again
 - Labels each dish on a strip of tape. Click the label to rename a dish, such as "Control A"
 - Opens any dish in an inspector with numbered seeds and their coordinates in millimetres
 - Draws seeds as cucumber, wheat, lettuce, radish or sunflower, to scale. This only changes how they
   look
+- Exports a run as a CSV of seed positions, a picture of the rack, and printable 1:1 templates to
+  set each dish on
+- Saves the run as you go and restores it the next time the app opens
 - Removes single dishes or clears the rack for the next run
 
 ![The dish inspector](docs/screenshots/inspector.png)
@@ -40,8 +43,15 @@ known codes.
 
 ## Running it
 
-Download the latest build from the Releases page. Windows may show a SmartScreen prompt for an
-unsigned app: choose **More info → Run anyway**.
+Download the latest build from the [Releases page](https://github.com/Nic-Richard/seed-placement-randomizer/releases).
+
+- **Windows:** run `SeedPlacementRandomizer-<version>-win-x64.exe`. No installation is needed.
+  Windows may warn about an unknown publisher because the app isn't code-signed: choose
+  **More info**, then **Run anyway**.
+- **macOS:** unzip the build for your Mac (`osx-arm64` for Apple silicon, `osx-x64` for Intel) and
+  move the app to Applications. The first time, right-click it and choose **Open**.
+
+Print templates at actual size (100%). Each page has a line that should measure 50 mm.
 
 ### Building from source
 
@@ -52,12 +62,15 @@ dotnet run --project src/SeedPlacement.App
 dotnet test
 ```
 
-Publish a self-contained single-file build:
+Publish a self-contained single-file build for Windows, or package the macOS app on a Mac:
 
 ```sh
 dotnet publish src/SeedPlacement.App -c Release -r win-x64 -o publish/win-x64
-dotnet publish src/SeedPlacement.App -c Release -r osx-arm64 -o publish/osx-arm64
+packaging/macos/package.sh osx-arm64 1.0.0 dist
 ```
+
+Pushing a tag such as `v1.0.0` builds both platforms on GitHub Actions and opens a draft release
+using the notes in `docs/releases/`.
 
 ## Repository structure
 
@@ -67,7 +80,8 @@ src/SeedPlacement.App/         Avalonia desktop app: views, view models, drawing
 tests/SeedPlacement.Tests/     Tests for Core, including statistical checks
 tools/SeedPlacement.Snapshots/ Renders the app offscreen to refresh the screenshots
 assets-src/                    Script that generates the seed, paper, bench grain and icon images
-docs/screenshots/              README screenshots
+packaging/macos/               App bundle template, icon and packaging script
+docs/                          Release notes and README screenshots
 ```
 
 Regenerate the images with `python assets-src/generate_assets.py` (numpy, scipy, Pillow), and the

@@ -6,11 +6,13 @@ namespace SeedPlacement.App.ViewModels;
 public sealed class DishItem : ObservableObject
 {
     private readonly Rack _rack;
+    private readonly Action? _changed;
     private ShelvedDish _dish;
 
-    public DishItem(Rack rack, int slot)
+    public DishItem(Rack rack, int slot, Action? changed = null)
     {
         _rack = rack;
+        _changed = changed;
         Slot = slot;
         _dish = rack.Slots[slot] ?? throw new ArgumentException("Slot is empty.", nameof(slot));
     }
@@ -34,6 +36,7 @@ public sealed class DishItem : ObservableObject
             _dish = updated;
             OnPropertyChanged();
             OnPropertyChanged(nameof(Caption));
+            _changed?.Invoke();
         }
     }
 

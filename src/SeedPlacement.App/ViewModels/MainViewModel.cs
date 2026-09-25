@@ -8,6 +8,8 @@ namespace SeedPlacement.App.ViewModels;
 
 public sealed record DishShelvedEventArgs(DishItem Dish, int Slot);
 
+public sealed record DishRemovedEventArgs(DishItem Dish, int Slot);
+
 public sealed class MainViewModel : ObservableObject
 {
     private readonly Rack _rack = new();
@@ -20,10 +22,15 @@ public sealed class MainViewModel : ObservableObject
     private bool _clearArmed;
     private CancellationTokenSource? _disarm;
     private readonly AppSettings? _settings;
+    private readonly RunStore? _store;
     private Palette _palette;
+    private string _codeEntry = "";
+    private string? _codeError;
+    private bool _isCodeEntryOpen;
 
-    public MainViewModel(AppSettings? settings = null)
+    public MainViewModel(AppSettings? settings = null, RunStore? store = null)
     {
+        _store = store;
         _settings = settings;
         _palette = Palette.Named(settings?.Palette);
         _seedKind = settings?.SeedKind ?? default;
@@ -36,14 +43,18 @@ public sealed class MainViewModel : ObservableObject
         CloseInspectorCommand = new RelayCommand(() => Inspector = null);
         SeedLooks = SeedKindInfo.All.Select(info => new SeedLookOption(info)).ToList();
         foreach (var look in SeedLooks) look.IsSelected = look.Info.Kind == _seedKind;
+        PlaceFromCodeCommand = new RelayCommand(() => _ = PlaceFromCodeAsync(), () => CanGenerate);
+        ToggleCodeEntryCommand = new RelayCommand(() => IsCodeEntryOpen = !IsCodeEntryOpen);
+        ExportCommand = new RelayCommand(() => ExportRequested?.Invoke(this, EventArgs.Empty), () => _rack.Occupied > 0);
+        RestoreRun();
     }
 
     /// <summary>Raised after a dish is placed on the rack, so the view can animate it there.</summary>
     public event EventHandler<DishShelvedEventArgs>? DishShelved;
 
-    public event EventHandler<int>? DishRemoved;
+    public event EventHandler<DishRemovedEventArgs>? DishRemoved;
 
-    public event EventHandler? RackCleared;
+    public event EventHandler? ExportRequested;
 
     public ObservableCollection<SlotViewModel> Slots { get; }
 
@@ -56,6 +67,44 @@ public sealed class MainViewModel : ObservableObject
     public RelayCommand FewerSeedsCommand { get; }
 
     public RelayCommand CloseInspectorCommand { get; }
+
+    public RelayCommand PlaceFromCodeCommand { get; }
+
+    public RelayCommand ToggleCodeEntryCommand { get; }
+
+    public RelayCommand ExportCommand { get; }
+
+    public Rack Rack => _rack;
+
+    public bool IsCodeEntryOpen
+    {
+        get => _isCodeEntryOpen;
+        set
+        {
+            if (!Set(ref _isCodeEntryOpen, value)) return;
+            CodeError = null;
+        }
+    }
+
+    public string CodeEntry
+    {
+        get => _codeEntry;
+        set
+        {
+            if (Set(ref _codeEntry, value ?? "")) CodeError = null;
+        }
+    }
+
+    public string? CodeError
+    {
+        get => _codeError;
+        private set
+        {
+            if (Set(ref _codeError, value)) OnPropertyChanged(nameof(HasCodeError));
+        }
+    }
+
+    public bool HasCodeError => CodeError is not null;
 
     public IReadOnlyList<SeedLookOption> SeedLooks { get; }
 
@@ -158,8 +207,6 @@ public sealed class MainViewModel : ObservableObject
         var n => $"{n} of {Rack.SlotCount} slots filled",
     };
 
-    public string GenerateHint => _rack.IsFull ? "Remove a dish or clear the rack to continue" : "Space";
-
     public bool IsClearArmed
     {
         get => _clearArmed;
@@ -173,7 +220,22 @@ public sealed class MainViewModel : ObservableObject
         ? $"Clear {_rack.Occupied} {(_rack.Occupied == 1 ? "dish" : "dishes")}?"
         : "Clear rack";
 
-    public async Task GenerateAsync()
+    public Task GenerateAsync() => PlaceAsync(null);
+
+    /// <summary>Rebuilds the exact dish a code describes and shelves it in a random empty slot.</summary>
+    public async Task PlaceFromCodeAsync()
+    {
+        if (!LayoutCode.TryParse(CodeEntry, out var code))
+        {
+            CodeError = "That isn't a layout code. Codes look like RS8V-BTJ0.";
+            return;
+        }
+        await PlaceAsync(code);
+        CodeEntry = "";
+        IsCodeEntryOpen = false;
+    }
+
+    private async Task PlaceAsync(LayoutCode? code)
     {
         if (!CanGenerate) return;
         _generating = true;
@@ -181,11 +243,12 @@ public sealed class MainViewModel : ObservableObject
         try
         {
             var settings = new PlacementSettings(SeedCount, SpacingMm);
-            var layout = await Task.Run(() => SeedSampler.Generate(settings));
+            var layout = await Task.Run(() => code is { } c ? SeedSampler.Generate(c) : SeedSampler.Generate(settings));
             var slot = _rack.Shelve(layout);
-            var dish = new DishItem(_rack, slot);
+            var dish = new DishItem(_rack, slot, SaveRun);
             Slots[slot].Dish = dish;
             Bench = dish;
+            SaveRun();
             DishShelved?.Invoke(this, new DishShelvedEventArgs(dish, slot));
         }
         finally
@@ -202,11 +265,12 @@ public sealed class MainViewModel : ObservableObject
 
     public void RemoveSlot(int slot)
     {
-        if (_rack.Remove(slot) is null) return;
+        if (Slots[slot].Dish is not { } dish || _rack.Remove(slot) is null) return;
         Slots[slot].Dish = null;
         if (Bench?.Slot == slot) Bench = null;
         if (Inspector?.Slot == slot) Inspector = null;
-        DishRemoved?.Invoke(this, slot);
+        SaveRun();
+        DishRemoved?.Invoke(this, new DishRemovedEventArgs(dish, slot));
         RefreshRack();
     }
 
@@ -239,13 +303,37 @@ public sealed class MainViewModel : ObservableObject
 
     private void ClearRack()
     {
+        var removed = Slots.Where(s => s.Dish is not null).Select(s => new DishRemovedEventArgs(s.Dish!, s.Index)).ToList();
         _rack.Clear();
         foreach (var slot in Slots) slot.Dish = null;
         Bench = null;
         Inspector = null;
-        RackCleared?.Invoke(this, EventArgs.Empty);
+        SaveRun();
+        foreach (var args in removed) DishRemoved?.Invoke(this, args);
         RefreshRack();
     }
+
+    private void RestoreRun()
+    {
+        if (_store?.Load() is not { } record) return;
+        try
+        {
+            record.RestoreInto(_rack);
+        }
+        catch (Exception e) when (e is ArgumentException or FormatException)
+        {
+            _rack.Clear();
+            return;
+        }
+        for (var slot = 0; slot < Rack.SlotCount; slot++)
+        {
+            if (_rack.Slots[slot] is not null) Slots[slot].Dish = new DishItem(_rack, slot, SaveRun);
+        }
+        Bench = Slots.Select(s => s.Dish).OfType<DishItem>().MaxBy(d => d.Number);
+        RefreshRack();
+    }
+
+    private void SaveRun() => _store?.Save(_rack);
 
     private void RefreshRack()
     {
@@ -253,9 +341,10 @@ public sealed class MainViewModel : ObservableObject
         OnPropertyChanged(nameof(CanGenerate));
         OnPropertyChanged(nameof(Occupied));
         OnPropertyChanged(nameof(RackStatus));
-        OnPropertyChanged(nameof(GenerateHint));
         OnPropertyChanged(nameof(ClearLabel));
         GenerateCommand.Refresh();
         ClearRackCommand.Refresh();
+        PlaceFromCodeCommand.Refresh();
+        ExportCommand.Refresh();
     }
 }

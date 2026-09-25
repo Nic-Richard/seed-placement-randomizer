@@ -24,12 +24,14 @@ public static class Motion
     {
         ease ??= Ease.OutCubic;
         var top = TopLevel.GetTopLevel(host);
-        if (top is null || duration <= TimeSpan.Zero)
+        if (top is null || duration <= TimeSpan.Zero || ReducedMotion.IsRequested)
         {
             step(1);
             return Task.CompletedTask;
         }
 
+        // Apply the starting state now, so nothing shows its old state while waiting for a frame or a delay.
+        step(ease(0));
         var done = new TaskCompletionSource();
         var clock = Stopwatch.StartNew();
         var registration = cancel.Register(() =>
@@ -62,6 +64,7 @@ public static class Motion
 
     public static async Task Delay(TimeSpan delay, CancellationToken cancel)
     {
+        if (ReducedMotion.IsRequested) return;
         try
         {
             await Task.Delay(delay, cancel);

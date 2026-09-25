@@ -8,9 +8,13 @@ using Avalonia.Input;
 using Avalonia.Input.Platform;
 using Avalonia.Interactivity;
 using Avalonia.Media;
+using Avalonia.Media.Imaging;
+using Avalonia.Platform.Storage;
 using Avalonia.VisualTree;
 using SeedPlacement.App.Controls;
+using SeedPlacement.App.Export;
 using SeedPlacement.App.ViewModels;
+using SeedPlacement.Core;
 
 namespace SeedPlacement.App.Views;
 
@@ -29,6 +33,8 @@ public sealed partial class MainWindow : Window
     private Vector _tiltTarget;
     private Vector _hoverTarget;
     private bool _tiltRunning;
+    private Control? _inspectedFrom;
+    private int _pendingRemovals;
 
     public MainWindow()
     {
@@ -60,14 +66,29 @@ public sealed partial class MainWindow : Window
         if (_vm is not null)
         {
             _vm.DishShelved -= OnDishShelved;
+            _vm.DishRemoved -= OnDishRemoved;
+            _vm.ExportRequested -= OnExportRequested;
             _vm.PropertyChanged -= OnViewModelChanged;
         }
         _vm = DataContext as MainViewModel;
         if (_vm is not null)
         {
             _vm.DishShelved += OnDishShelved;
+            _vm.DishRemoved += OnDishRemoved;
+            _vm.ExportRequested += OnExportRequested;
             _vm.PropertyChanged += OnViewModelChanged;
+            if (_vm.Bench is { } restored) ShowBenchDish(restored);
         }
+    }
+
+    private void ShowBenchDish(DishItem dish)
+    {
+        BenchEmptyText.IsVisible = false;
+        BenchDishView.IsEmptyGhost = false;
+        BenchDishView.Reveal = double.MaxValue;
+        BenchDishView.Layout = dish.Layout;
+        BenchHost.Opacity = 1;
+        CaptionTape.Opacity = 1;
     }
 
     private void OnViewModelChanged(object? sender, PropertyChangedEventArgs e)
@@ -120,7 +141,7 @@ public sealed partial class MainWindow : Window
         var bench = BenchDishView;
         var slotDish = FindSlotPart<DishView>(e.Slot, "SlotDish");
         var glow = FindSlotPart<Ellipse>(e.Slot, "SlotGlow");
-        var badge = FindSlotPart<Border>(e.Slot, "SlotBadge");
+        var badge = FindSlotPart<Control>(e.Slot, "SlotBadge");
         if (slotDish is not null) slotDish.Opacity = 0;
         if (badge is not null) badge.Opacity = 0;
 
@@ -187,7 +208,98 @@ public sealed partial class MainWindow : Window
         FlightLayer.Children.Remove(ghost);
     }
 
-    // Enter keeps the new label; Escape puts the old one back. Either way the label stops being edited.
+    // The slot has already emptied by the time this runs, so the animation needs its own copy of the dish.
+    private async void OnDishRemoved(object? sender, DishRemovedEventArgs e)
+    {
+        var slotButton = FindSlotPart<Button>(e.Slot, null);
+        if (slotButton is null || BoundsIn(slotButton, FlightLayer) is not { } rect) return;
+        var delay = TimeSpan.FromMilliseconds(45 * _pendingRemovals++);
+
+        var ghost = new DishView { Layout = e.Dish.Layout, Width = rect.Width, Height = rect.Height };
+        Canvas.SetLeft(ghost, rect.X);
+        Canvas.SetTop(ghost, rect.Y);
+        FlightLayer.Children.Add(ghost);
+        await Motion.Tween(ghost, TimeSpan.FromMilliseconds(320), t =>
+        {
+            var s = 1 - 0.12 * t;
+            ghost.Opacity = 1 - t;
+            ghost.RenderTransform = new TransformGroup
+            {
+                Children = { new ScaleTransform(s, s), new TranslateTransform(0, -18 * t) },
+            };
+        }, CancellationToken.None, Ease.OutCubic, delay);
+        FlightLayer.Children.Remove(ghost);
+        _pendingRemovals = Math.Max(0, _pendingRemovals - 1);
+    }
+
+    private void OnCodeKeyDown(object? sender, KeyEventArgs e)
+    {
+        if (_vm is null) return;
+        if (e.Key == Key.Enter) _vm.PlaceFromCodeCommand.Execute(null);
+        else if (e.Key == Key.Escape) _vm.IsCodeEntryOpen = false;
+        else return;
+        e.Handled = true;
+    }
+
+    private async void OnExportRequested(object? sender, EventArgs e)
+    {
+        if (_vm is null) return;
+        var folders = await StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
+        {
+            Title = "Choose where to save the run",
+            AllowMultiple = false,
+        });
+        if (folders.Count == 0) return;
+        var folder = folders[0];
+        var name = $"Seed run {DateTime.Now:yyyy-MM-dd HHmm}";
+
+        try
+        {
+            await WriteFile(folder, $"{name} seeds.csv", s =>
+            {
+                using var writer = new StreamWriter(s);
+                writer.Write(RunCsv.Write(_vm.Rack));
+            });
+            await WriteFile(folder, $"{name} templates.pdf", s => TemplatePdf.Write(s, _vm.Rack));
+            using var picture = RenderPicture();
+            await WriteFile(folder, $"{name} rack.png", s => picture.Save(s, new PngBitmapEncoderOptions()));
+            ShowExportStatus($"Saved the seed positions, rack picture and printable templates to {folder.Name}.");
+            await Launcher.LaunchFileAsync(folder);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            ShowExportStatus($"Couldn't save the run: {ex.Message}");
+        }
+    }
+
+    private static async Task WriteFile(IStorageFolder folder, string name, Action<Stream> write)
+    {
+        var file = await folder.CreateFileAsync(name) ?? throw new IOException($"Couldn't create {name}.");
+        await using var stream = await file.OpenWriteAsync();
+        write(stream);
+    }
+
+    // Scaled while drawing at 96 dpi: rendering straight to a high-DPI bitmap misplaces anything drawn after a clip.
+    private RenderTargetBitmap RenderPicture()
+    {
+        const double scale = 2;
+        var size = Root.Bounds.Size;
+        var bitmap = new RenderTargetBitmap(new PixelSize((int)(size.Width * scale), (int)(size.Height * scale)));
+        using var context = bitmap.CreateDrawingContext();
+        using (context.PushTransform(Matrix.CreateScale(scale, scale)))
+        {
+            var brush = new VisualBrush(Root) { Stretch = Stretch.None, AlignmentX = AlignmentX.Left, AlignmentY = AlignmentY.Top };
+            context.DrawRectangle(brush, null, new Rect(size));
+        }
+        return bitmap;
+    }
+
+    private void ShowExportStatus(string text)
+    {
+        ExportStatus.Text = text;
+        ExportStatus.IsVisible = true;
+    }
+
     private void OnLabelKeyDown(object? sender, KeyEventArgs e)
     {
         if (sender is not TextBox box || e.Key is not (Key.Enter or Key.Escape)) return;
@@ -211,7 +323,9 @@ public sealed partial class MainWindow : Window
 
     private void OnSlotClick(object? sender, RoutedEventArgs e)
     {
-        if (sender is Control { DataContext: SlotViewModel slot }) _vm?.Inspect(slot);
+        if (sender is not Control { DataContext: SlotViewModel slot } control) return;
+        _inspectedFrom = control;
+        _vm?.Inspect(slot);
     }
 
     private void ShowInspector()
@@ -230,12 +344,21 @@ public sealed partial class MainWindow : Window
             InspectorLayer.Opacity = t;
             MainContent.Effect = new BlurEffect { Radius = 14 * t };
         }, cancel);
-        _ = Motion.Tween(InspectTilt, TimeSpan.FromMilliseconds(420), t =>
+        InspectTilt.RenderTransform = null;
+        InspectorLayer.UpdateLayout();
+        var from = _inspectedFrom is { } origin ? BoundsIn(origin, Root) : null;
+        var to = BoundsIn(InspectTilt, Root);
+        var startScale = from is { } f && to is { } g && g.Width > 0 ? f.Width / g.Width : 0.82;
+        var offset = from is { } a && to is { } b ? a.Center - b.Center : default;
+        _ = Motion.Tween(InspectTilt, TimeSpan.FromMilliseconds(460), t =>
         {
-            InspectTilt.Opacity = t;
-            var s = 0.82 + 0.18 * t;
-            InspectTilt.RenderTransform = new ScaleTransform(s, s);
-        }, cancel);
+            InspectTilt.Opacity = Math.Min(1, t * 3);
+            var s = Lerp(startScale, 1, t);
+            InspectTilt.RenderTransform = new TransformGroup
+            {
+                Children = { new ScaleTransform(s, s), new TranslateTransform(offset.X * (1 - t), offset.Y * (1 - t)) },
+            };
+        }, cancel, Ease.OutCubic);
         _ = Motion.Tween(InspectCard, TimeSpan.FromMilliseconds(360), t =>
         {
             InspectCard.Opacity = t;
@@ -329,7 +452,6 @@ public sealed partial class MainWindow : Window
         RequestAnimationFrame(TiltFrame);
     }
 
-    // A damped spring toward the drag target, or back toward the hover lean once released.
     private void TiltFrame(TimeSpan now)
     {
         var target = _dragging ? _tiltTarget : _hoverTarget;
@@ -355,8 +477,9 @@ public sealed partial class MainWindow : Window
     private static Vector Clamp(Vector v) =>
         new(Math.Clamp(v.X, -MaxTilt, MaxTilt), Math.Clamp(v.Y, -MaxTilt, MaxTilt));
 
-    private T? FindSlotPart<T>(int slot, string name) where T : Control =>
-        RackSlots.ContainerFromIndex(slot)?.GetVisualDescendants().OfType<T>().FirstOrDefault(c => c.Name == name);
+    private T? FindSlotPart<T>(int slot, string? name) where T : Control =>
+        RackSlots.ContainerFromIndex(slot)?.GetVisualDescendants().OfType<T>()
+            .FirstOrDefault(c => name is null || c.Name == name);
 
     private static Rect? BoundsIn(Visual visual, Visual target)
     {

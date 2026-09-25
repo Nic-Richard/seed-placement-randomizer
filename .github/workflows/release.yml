@@ -1,0 +1,65 @@
+name: Release
+
+# Pushing a tag such as v1.0.0 builds every platform and opens a draft release to review and publish.
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+      - run: dotnet test -c Release
+      - name: Publish
+        shell: bash
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          dotnet publish src/SeedPlacement.App -c Release -r win-x64 -o out -p:Version="$version"
+          mv out/SeedPlacementRandomizer.exe "SeedPlacementRandomizer-$version-win-x64.exe"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows
+          path: SeedPlacementRandomizer-*-win-x64.exe
+
+  macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+      - name: Package
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          chmod +x packaging/macos/package.sh
+          packaging/macos/package.sh osx-arm64 "$version" dist
+          packaging/macos/package.sh osx-x64 "$version" dist
+      - uses: actions/upload-artifact@v4
+        with:
+          name: macos
+          path: dist/*.zip
+
+  release:
+    needs: [windows, macos]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: assets
+          merge-multiple: true
+      - name: Create draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          notes="docs/releases/${GITHUB_REF_NAME}.md"
+          if [ -f "$notes" ]; then notes_arg=(--notes-file "$notes"); else notes_arg=(--generate-notes); fi
+          gh release create "$GITHUB_REF_NAME" assets/* --draft \
+            --title "Seed Placement Randomizer ${GITHUB_REF_NAME#v}" "${notes_arg[@]}"

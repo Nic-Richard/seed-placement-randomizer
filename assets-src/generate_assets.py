@@ -11,6 +11,7 @@ from PIL import Image
 from scipy.ndimage import gaussian_filter
 
 OUT = Path(__file__).resolve().parent.parent / "src" / "SeedPlacement.App" / "Assets"
+MACOS = Path(__file__).resolve().parent.parent / "packaging" / "macos"
 SS = 3  # supersampling factor
 
 
@@ -167,8 +168,8 @@ def bench(size=512):
     save_rgba(OUT / "bench-grain.png", rgb, np.clip(np.abs(signal), 0, 1))
 
 
-def icon(size=512):
-    """Dark rounded tile with a glass dish holding five seeds, exported as .ico and a 64 px PNG."""
+def icon(size=1024):
+    """Dark rounded tile with a glass dish holding five seeds: the window icon, a 64 px PNG and the macOS .icns."""
     s = size * SS
     y, x = np.mgrid[0:s, 0:s].astype(float) + 0.5
     c = s / 2
@@ -215,7 +216,8 @@ def icon(size=512):
     img = img.resize((size, size), Image.LANCZOS)
     img.save(OUT / "icon.ico", sizes=[(16, 16), (24, 24), (32, 32), (48, 48), (64, 64), (128, 128), (256, 256)])
     img.resize((64, 64), Image.LANCZOS).save(OUT / "icon-64.png", optimize=True)
-    img.resize((256, 256), Image.LANCZOS).save(OUT / "icon-256.png", optimize=True)
+    MACOS.mkdir(parents=True, exist_ok=True)
+    img.save(MACOS / "icon.icns")
 
 
 if __name__ == "__main__":

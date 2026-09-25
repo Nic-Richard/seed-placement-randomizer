@@ -7,7 +7,7 @@ namespace SeedPlacement.App;
 public sealed class AppSettings
 {
     private static readonly string FilePath = Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
         "SeedPlacementRandomizer",
         "settings.json");
 

@@ -69,5 +69,19 @@ public sealed class Rack
         _nextNumber = 1;
     }
 
+    /// <summary>Replaces the rack's contents with a saved run.</summary>
+    public void Restore(IEnumerable<(int Slot, ShelvedDish Dish)> dishes, int nextNumber)
+    {
+        Clear();
+        foreach (var (slot, dish) in dishes)
+        {
+            if (slot is < 0 or >= SlotCount) throw new ArgumentOutOfRangeException(nameof(dishes), $"Slot {slot} is outside the rack.");
+            if (_slots[slot] is not null) throw new ArgumentException($"Slot {SlotNumber(slot)} is used twice.", nameof(dishes));
+            _slots[slot] = dish;
+        }
+        var highest = _slots.Max(d => d?.Number ?? 0);
+        _nextNumber = Math.Max(nextNumber, highest + 1);
+    }
+
     public static int SlotNumber(int slot) => slot + 1;
 }
