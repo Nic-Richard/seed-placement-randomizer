@@ -1,0 +1,303 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:SeedPlacement.App.ViewModels"
+        xmlns:c="using:SeedPlacement.App.Controls"
+        x:Class="SeedPlacement.App.Views.MainWindow"
+        x:DataType="vm:MainViewModel"
+        Title="Seed Placement Randomizer"
+        Icon="avares://SeedPlacementRandomizer/Assets/icon.ico"
+        Width="1320" Height="880" MinWidth="1080" MinHeight="740"
+        WindowStartupLocation="CenterScreen"
+        Background="{DynamicResource BenchBrush}"
+        c:DishView.SeedKind="{Binding SeedKind}">
+
+  <Grid x:Name="Root" Focusable="True" FocusAdorner="{x:Null}" PointerPressed="OnRootPressed">
+    <Border>
+      <Border.Background>
+        <ImageBrush Source="avares://SeedPlacementRandomizer/Assets/bench-grain.png" TileMode="Tile"
+                    DestinationRect="0,0,512,512" />
+      </Border.Background>
+    </Border>
+    <Border IsHitTestVisible="False" Background="{DynamicResource SpotlightBrush}" />
+
+    <Grid x:Name="MainContent" ColumnDefinitions="320,*">
+      <!-- Controls -->
+      <Border Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource HairlineBrush}"
+              BorderThickness="0,0,1,0">
+        <DockPanel Margin="28,32,28,24">
+          <StackPanel DockPanel.Dock="Top" Spacing="3" Margin="0,0,0,34">
+            <TextBlock Text="Seed placement" FontSize="22" FontWeight="Bold" />
+            <TextBlock Classes="muted" FontSize="14" Text="Random layouts for seed bioassays" />
+          </StackPanel>
+
+          <Grid DockPanel.Dock="Bottom" ColumnDefinitions="*,Auto">
+            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+              <TextBlock Classes="muted" FontSize="13" Text="Made by " VerticalAlignment="Center" />
+              <Button Classes="link" Content="Nic Richard" Click="OnCreditClick"
+                      ToolTip.Tip="github.com/Nic-Richard" />
+            </StackPanel>
+            <TextBlock x:Name="VersionText" Grid.Column="1" Classes="muted" FontSize="13" VerticalAlignment="Center" />
+          </Grid>
+
+          <StackPanel DockPanel.Dock="Bottom" Spacing="8" Margin="0,0,0,22">
+            <TextBlock Classes="label" Text="Bench colour" />
+            <ComboBox ItemsSource="{Binding Palettes}" SelectedItem="{Binding SelectedPalette}"
+                      HorizontalAlignment="Stretch" FontSize="14" />
+          </StackPanel>
+
+          <StackPanel Spacing="32">
+            <!-- Seed count -->
+            <StackPanel Spacing="6">
+              <TextBlock Classes="label" Text="Seeds per dish" />
+              <Grid ColumnDefinitions="*,Auto">
+                <TextBlock FontSize="52" FontWeight="Bold" VerticalAlignment="Center" Text="{Binding SeedCount}" />
+                <Border Grid.Column="1" Classes="stepper" VerticalAlignment="Center">
+                  <StackPanel Orientation="Horizontal">
+                    <Button Classes="stepkey" Content="−" Command="{Binding FewerSeedsCommand}"
+                            ToolTip.Tip="Fewer seeds" />
+                    <Border Width="1" Background="{DynamicResource ControlBorderBrush}" />
+                    <Button Classes="stepkey" Content="+" Command="{Binding MoreSeedsCommand}"
+                            ToolTip.Tip="More seeds" />
+                  </StackPanel>
+                </Border>
+              </Grid>
+              <Slider Minimum="{Binding MinSeeds}" Maximum="{Binding MaxSeeds}" Value="{Binding SeedCount}"
+                      TickFrequency="1" IsSnapToTickEnabled="True" />
+            </StackPanel>
+
+            <!-- Spacing -->
+            <StackPanel Spacing="4">
+              <Grid ColumnDefinitions="*,Auto">
+                <TextBlock Classes="label" Text="Minimum spacing" />
+                <TextBlock Grid.Column="1" FontSize="15" FontWeight="Bold" Text="{Binding SpacingText}" />
+              </Grid>
+              <Slider Minimum="{Binding MinSpacing}" Maximum="{Binding MaxSpacing}" Value="{Binding SpacingMm}"
+                      TickFrequency="0.5" IsSnapToTickEnabled="True" />
+              <TextBlock Classes="faint" FontSize="13" TextWrapping="Wrap" LineHeight="19"
+                         Text="Measured center to center, at least 10 mm from the rim of a 90 mm dish." />
+            </StackPanel>
+
+            <!-- Seed look -->
+            <StackPanel Spacing="10">
+              <Grid ColumnDefinitions="*,Auto">
+                <TextBlock Classes="label" Text="Seed drawing" />
+                <TextBlock Grid.Column="1" Classes="label" Text="{Binding SeedLookName}" />
+              </Grid>
+              <ItemsControl ItemsSource="{Binding SeedLooks}" Margin="-3,0">
+                <ItemsControl.ItemsPanel>
+                  <ItemsPanelTemplate>
+                    <UniformGrid Columns="5" />
+                  </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="vm:SeedLookOption">
+                    <Button Classes="look" Classes.selected="{Binding IsSelected}" Click="OnSeedLookClick"
+                            ToolTip.Tip="{Binding Name}">
+                      <Image Source="{Binding Sprite}" Width="42" Height="42" RenderTransform="rotate(-35deg)" />
+                    </Button>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </StackPanel>
+
+            <!-- Place -->
+            <StackPanel Spacing="10">
+              <Button Classes="primary" Command="{Binding GenerateCommand}">
+                <Grid ColumnDefinitions="*,Auto">
+                  <TextBlock Text="Place a dish" VerticalAlignment="Center" />
+                  <TextBlock Grid.Column="1" Text="Space" FontSize="13" FontWeight="Normal" Opacity="0.7"
+                             VerticalAlignment="Center" IsVisible="{Binding CanGenerate}" />
+                </Grid>
+              </Button>
+              <TextBlock Classes="muted" FontSize="13" TextWrapping="Wrap" IsVisible="{Binding IsRackFull}"
+                         Text="The rack is full. Remove a dish or clear the rack to place another." />
+            </StackPanel>
+
+            <!-- Rack status -->
+            <StackPanel Spacing="10">
+              <Grid ColumnDefinitions="*,Auto">
+                <TextBlock Classes="label" Text="Rack" />
+                <TextBlock Grid.Column="1" Classes="label" Text="{Binding RackStatus}" />
+              </Grid>
+              <ItemsControl ItemsSource="{Binding Slots}">
+                <ItemsControl.ItemsPanel>
+                  <ItemsPanelTemplate>
+                    <UniformGrid Columns="10" />
+                  </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="vm:SlotViewModel">
+                    <Border Height="6" CornerRadius="3" Margin="2,0" Background="{DynamicResource TrackBrush}">
+                      <Border CornerRadius="3" Background="{DynamicResource AccentBrush}" IsVisible="{Binding HasDish}" />
+                    </Border>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+              <Button Classes="ghost" Classes.danger="{Binding IsClearArmed}" Content="{Binding ClearLabel}"
+                      HorizontalAlignment="Left" Margin="0,4,0,0" Command="{Binding ClearRackCommand}" />
+            </StackPanel>
+          </StackPanel>
+        </DockPanel>
+      </Border>
+
+      <!-- Stage -->
+      <Grid Grid.Column="1" RowDefinitions="*,Auto" Margin="36,26,36,30">
+        <Grid RowDefinitions="*,Auto">
+          <Viewbox x:Name="BenchBox" Stretch="Uniform" Margin="0,0,0,8">
+            <Panel x:Name="BenchHost" Width="600" Height="600" RenderTransformOrigin="50%,50%">
+              <c:DishView x:Name="BenchDish" IsEmptyGhost="True" />
+              <c:TapeStrip x:Name="BenchLabel" HorizontalAlignment="Center" VerticalAlignment="Bottom"
+                           Margin="0,0,0,18" RenderTransform="rotate(-3deg)"
+                           IsVisible="{Binding Bench, Converter={x:Static ObjectConverters.IsNotNull}}">
+                <TextBox Classes="tapeinput" FontSize="34" Padding="22,6,22,2"
+                         MaxLength="{Binding Bench.MaxLabelLength, FallbackValue=24}"
+                         Text="{Binding Bench.Label, FallbackValue='', UpdateSourceTrigger=LostFocus}"
+                         KeyDown="OnLabelKeyDown" />
+              </c:TapeStrip>
+              <TextBlock x:Name="BenchEmptyText" Classes="muted" FontSize="18"
+                         HorizontalAlignment="Center" VerticalAlignment="Center" TextAlignment="Center"
+                         Text="Place a dish to begin" />
+            </Panel>
+          </Viewbox>
+
+          <StackPanel x:Name="BenchCaption" Grid.Row="1" Height="66" HorizontalAlignment="Center" Spacing="9"
+                      IsVisible="{Binding Bench, Converter={x:Static ObjectConverters.IsNotNull}}">
+            <c:TapeStrip x:Name="CaptionTape" HorizontalAlignment="Center" RenderTransformOrigin="50%,50%"
+                         RenderTransform="rotate(-1.5deg)">
+              <TextBlock Text="{Binding Bench.Caption, FallbackValue=''}" Margin="20,6,20,5" FontSize="20"
+                         FontWeight="Bold" Foreground="{StaticResource TapeInkBrush}" />
+            </c:TapeStrip>
+            <TextBlock HorizontalAlignment="Center" FontSize="14" Classes="muted"
+                       Text="{Binding Bench.Detail, FallbackValue=''}" />
+          </StackPanel>
+        </Grid>
+
+        <!-- Rack -->
+        <Viewbox Grid.Row="1" MaxHeight="330" Stretch="Uniform" Margin="0,12,0,0">
+          <Grid Width="780" Height="346">
+            <c:WireShelf />
+            <ItemsControl x:Name="RackSlots" ItemsSource="{Binding Slots}" Margin="30,22">
+              <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate>
+                  <UniformGrid Columns="5" Rows="2" />
+                </ItemsPanelTemplate>
+              </ItemsControl.ItemsPanel>
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:SlotViewModel">
+                  <Panel>
+                    <c:TapeStrip HorizontalAlignment="Left" VerticalAlignment="Top" Margin="0,2,0,0"
+                                 RenderTransform="rotate(-4deg)" ZIndex="2">
+                      <TextBlock Text="{Binding Label}" FontSize="14" FontWeight="Bold" Margin="8,1,8,0"
+                                 Foreground="{StaticResource TapeInkBrush}" />
+                    </c:TapeStrip>
+                    <Button Classes="slot" Width="136" Height="136" HorizontalAlignment="Center"
+                            VerticalAlignment="Center" IsEnabled="{Binding HasDish}" Click="OnSlotClick"
+                            RenderTransformOrigin="50%,50%">
+                      <Panel>
+                        <c:DishView x:Name="SlotDish" Layout="{Binding Layout}" IsVisible="{Binding HasDish}" />
+                        <c:DishView IsEmptyGhost="True" IsVisible="{Binding !HasDish}" />
+                        <Ellipse x:Name="SlotGlow" Stroke="{DynamicResource AccentBrush}" StrokeThickness="3"
+                                 Margin="2" Opacity="0" IsHitTestVisible="False" />
+                        <c:TapeStrip x:Name="SlotBadge" IsVisible="{Binding HasDish}" HorizontalAlignment="Center"
+                                     VerticalAlignment="Bottom" Margin="0,0,0,2" MaxWidth="128"
+                                     RenderTransform="rotate(-3deg)">
+                          <TextBlock Text="{Binding Dish.Label, FallbackValue=''}" FontSize="13" Margin="8,2,8,0"
+                                     FontFamily="{StaticResource MarkerFont}" TextTrimming="CharacterEllipsis"
+                                     Foreground="{StaticResource TapeInkBrush}" />
+                        </c:TapeStrip>
+                      </Panel>
+                    </Button>
+                  </Panel>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </Grid>
+        </Viewbox>
+      </Grid>
+    </Grid>
+
+    <Canvas x:Name="FlightLayer" IsHitTestVisible="False" />
+
+    <!-- Inspector -->
+    <Grid x:Name="InspectorLayer" IsVisible="False" Background="{DynamicResource OverlayBrush}"
+          PointerPressed="OnBackdropPressed">
+      <Grid x:Name="InspectorContent" ColumnDefinitions="Auto,380" HorizontalAlignment="Center"
+            VerticalAlignment="Center" Margin="40"
+            DataContext="{Binding Inspector}" x:DataType="vm:InspectorViewModel">
+        <Panel x:Name="InspectStage" Background="Transparent" Cursor="SizeAll" Width="560" Height="600"
+               Margin="0,0,52,0"
+               PointerPressed="OnStagePressed" PointerMoved="OnStageMoved" PointerReleased="OnStageReleased"
+               PointerExited="OnStageExited">
+          <Viewbox Stretch="Uniform" ClipToBounds="False">
+            <Panel x:Name="InspectTilt" Width="640" Height="640" RenderTransformOrigin="50%,50%">
+              <c:DishView x:Name="InspectDish" Layout="{Binding Layout, FallbackValue={x:Null}}" ShowNumbers="True" />
+            </Panel>
+          </Viewbox>
+        </Panel>
+
+        <Border x:Name="InspectCard" Grid.Column="1" Background="{DynamicResource SurfaceBrush}" CornerRadius="14"
+                Padding="26" BorderBrush="{DynamicResource HairlineBrush}" BorderThickness="1"
+                VerticalAlignment="Center" PointerPressed="OnCardPressed">
+          <DockPanel>
+            <StackPanel DockPanel.Dock="Top" Spacing="6">
+              <Grid ColumnDefinitions="*,Auto">
+                <c:TapeStrip HorizontalAlignment="Left" VerticalAlignment="Center" RenderTransform="rotate(-2deg)">
+                  <TextBox Classes="tapeinput" FontSize="24" Padding="14,4,14,0"
+                           MaxLength="{Binding Dish.MaxLabelLength}"
+                           Text="{Binding Dish.Label, UpdateSourceTrigger=LostFocus}" KeyDown="OnLabelKeyDown" />
+                </c:TapeStrip>
+                <TextBlock Grid.Column="1" Text="{Binding Dish.SlotText}" FontSize="18" FontWeight="Bold"
+                           VerticalAlignment="Center" Margin="12,0,0,0" />
+              </Grid>
+              <TextBlock Classes="muted" FontSize="14" Margin="0,6,0,0" Text="{Binding Dish.Summary}" />
+              <Border Background="{DynamicResource SunkenBrush}" CornerRadius="10" Padding="14,10" Margin="0,14,0,0">
+                <Grid ColumnDefinitions="*,Auto">
+                  <StackPanel Spacing="2">
+                    <TextBlock Classes="muted" FontSize="13" Text="Layout code" />
+                    <SelectableTextBlock FontSize="20" FontWeight="Bold" LetterSpacing="0.5" Text="{Binding Dish.Code}" />
+                  </StackPanel>
+                  <Button x:Name="CopyButton" Grid.Column="1" Classes="ghost" Content="Copy"
+                          VerticalAlignment="Center" Click="OnCopyCode" />
+                </Grid>
+              </Border>
+              <TextBlock Classes="faint" FontSize="12" Text="{Binding MethodText}" Margin="2,2,0,0" />
+            </StackPanel>
+
+            <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Spacing="10" Margin="0,20,0,0">
+              <Button Classes="ghost danger" Content="Remove from rack" Command="{Binding RemoveCommand}" />
+              <Button Classes="ghost" Click="OnCloseInspector" ToolTip.Tip="Esc">
+                <TextBlock Text="Close" />
+              </Button>
+            </StackPanel>
+
+            <StackPanel Margin="0,22,0,0" Spacing="4">
+              <Grid ColumnDefinitions="52,*,*" Margin="10,0">
+                <TextBlock Classes="muted" FontSize="13" Text="Seed" />
+                <TextBlock Grid.Column="1" Classes="muted" FontSize="13" Text="x, mm" HorizontalAlignment="Right" />
+                <TextBlock Grid.Column="2" Classes="muted" FontSize="13" Text="y, mm" HorizontalAlignment="Right" />
+              </Grid>
+              <ScrollViewer MaxHeight="330">
+                <ItemsControl ItemsSource="{Binding Rows}">
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:SeedRow">
+                      <Border Classes="seedrow" CornerRadius="8" Padding="10,6" Background="Transparent"
+                              PointerEntered="OnSeedRowEntered" PointerExited="OnSeedRowExited">
+                        <Grid ColumnDefinitions="52,*,*">
+                          <TextBlock FontSize="15" FontWeight="Bold" Text="{Binding Number}" />
+                          <TextBlock Grid.Column="1" FontSize="15" Text="{Binding X}" HorizontalAlignment="Right" />
+                          <TextBlock Grid.Column="2" FontSize="15" Text="{Binding Y}" HorizontalAlignment="Right" />
+                        </Grid>
+                      </Border>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+              </ScrollViewer>
+              <TextBlock Classes="faint" FontSize="12" TextWrapping="Wrap" Margin="10,6,0,0" LineHeight="18"
+                         Text="Measured from the dish center. Positive x is to the right, positive y is toward the top of the screen." />
+            </StackPanel>
+          </DockPanel>
+        </Border>
+      </Grid>
+    </Grid>
+  </Grid>
+</Window>

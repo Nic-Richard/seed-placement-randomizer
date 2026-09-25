@@ -1,0 +1,22 @@
+# Build output
+bin/
+obj/
+publish/
+artifacts/
+*.user
+*.suo
+.vs/
+.vscode/
+.idea/
+TestResults/
+coverage/
+
+
+# OS
+Thumbs.db
+Desktop.ini
+.DS_Store
+
+# Local planning and agent notes
+AGENTS.md
+docs/ROADMAP.md
