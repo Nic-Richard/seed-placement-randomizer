@@ -12,8 +12,8 @@ jobs:
   windows:
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v6
         with:
           global-json-file: global.json
       - run: dotnet test -c Release
@@ -23,7 +23,7 @@ jobs:
           version="${GITHUB_REF_NAME#v}"
           dotnet publish src/SeedPlacement.App -c Release -r win-x64 -o out -p:Version="$version"
           mv out/SeedPlacementRandomizer.exe "SeedPlacementRandomizer-$version-win-x64.exe"
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: windows
           path: SeedPlacementRandomizer-*-win-x64.exe
@@ -31,8 +31,8 @@ jobs:
   macos:
     runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v6
         with:
           global-json-file: global.json
       - name: Package
@@ -41,7 +41,7 @@ jobs:
           chmod +x packaging/macos/package.sh
           packaging/macos/package.sh osx-arm64 "$version" dist
           packaging/macos/package.sh osx-x64 "$version" dist
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: macos
           path: dist/*.zip
@@ -50,8 +50,8 @@ jobs:
     needs: [windows, macos]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/download-artifact@v4
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v8
         with:
           path: assets
           merge-multiple: true
