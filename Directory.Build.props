@@ -5,7 +5,7 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
-    <Version>1.1.0</Version>
+    <Version>1.1.1</Version>
     <Authors>Nic Richard</Authors>
     <Product>Seed Placement Randomizer</Product>
   </PropertyGroup>

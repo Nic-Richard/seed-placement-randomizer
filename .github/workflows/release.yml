@@ -46,8 +46,27 @@ jobs:
           name: macos
           path: dist/*.zip
 
+  linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+      - name: Package
+        # A tarball keeps the executable bit, which a plain download would lose.
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          dotnet publish src/SeedPlacement.App -c Release -r linux-x64 -o out -p:Version="$version"
+          chmod +x out/SeedPlacementRandomizer
+          tar -czf "SeedPlacementRandomizer-$version-linux-x64.tar.gz" -C out SeedPlacementRandomizer
+      - uses: actions/upload-artifact@v7
+        with:
+          name: linux
+          path: SeedPlacementRandomizer-*-linux-x64.tar.gz
+
   release:
-    needs: [windows, macos]
+    needs: [windows, macos, linux]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7

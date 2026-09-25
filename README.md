@@ -1,8 +1,8 @@
 # Seed Placement Randomizer
 
 A desktop app that removes unconscious bias from seed bioassays. It places seeds at random inside a
-petri dish, then puts each dish in a random slot on a 10-slot rack. It runs offline on Windows and
-macOS and is built to be shown on a projector as well as used at the bench.
+petri dish, then puts each dish in a random slot on a 10-slot rack. It runs offline on Windows,
+macOS and Linux, and is built to be shown on a projector as well as used at the bench.
 
 ![The rack with seven randomized dishes](docs/screenshots/rack.png)
 
@@ -50,6 +50,8 @@ Download the latest build from the [Releases page](https://github.com/Nic-Richar
   **More info**, then **Run anyway**.
 - **macOS:** unzip the build for your Mac (`osx-arm64` for Apple silicon, `osx-x64` for Intel) and
   move the app to Applications. The first time, right-click it and choose **Open**.
+- **Linux:** extract `SeedPlacementRandomizer-<version>-linux-x64.tar.gz` and run
+  `./SeedPlacementRandomizer`. It is self-contained and needs no .NET install.
 
 Print templates at actual size (100%). Each page has a line that should measure 50 mm.
 
