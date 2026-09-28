@@ -64,14 +64,15 @@ dotnet run --project src/SeedPlacement.App
 dotnet test
 ```
 
-Publish a self-contained single-file build for Windows, or package the macOS app on a Mac:
+Publish a self-contained single-file build for Windows or Linux, or package the macOS app on a Mac:
 
 ```sh
 dotnet publish src/SeedPlacement.App -c Release -r win-x64 -o publish/win-x64
+dotnet publish src/SeedPlacement.App -c Release -r linux-x64 -o publish/linux-x64
 packaging/macos/package.sh osx-arm64 1.0.0 dist
 ```
 
-Pushing a tag such as `v1.0.0` builds both platforms on GitHub Actions and opens a draft release
+Pushing a tag such as `v1.0.0` builds all three platforms on GitHub Actions and opens a draft release
 using the notes in `docs/releases/`.
 
 ## Repository structure
