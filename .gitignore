@@ -21,3 +21,7 @@ Desktop.ini
 AGENTS.md
 docs/ROADMAP.md
 CHANGELOG.md
+
+# Android signing keys live outside the repo and in Actions secrets
+*.keystore
+*.jks

@@ -2,6 +2,7 @@ using System.ComponentModel;
 using System.Reflection;
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.Platform;
 using Avalonia.Controls.Shapes;
 using Avalonia.Data;
 using Avalonia.Input;
@@ -10,6 +11,7 @@ using Avalonia.Interactivity;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using Avalonia.Platform.Storage;
+using Avalonia.Threading;
 using Avalonia.VisualTree;
 using SeedPlacement.App.Controls;
 using SeedPlacement.App.Export;
@@ -36,6 +38,7 @@ public sealed partial class MainView : UserControl
     private Control? _inspectedFrom;
     private int _pendingRemovals;
     private bool _compact;
+    private Thickness _safeArea;
 
     private const double CompactWidth = 760;
 
@@ -49,6 +52,37 @@ public sealed partial class MainView : UserControl
 
     private TopLevel? Host => TopLevel.GetTopLevel(this);
 
+    // Android draws the app behind the status and navigation bars, so content keeps clear of them by hand.
+    protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
+    {
+        base.OnAttachedToVisualTree(e);
+        if (Host?.InsetsManager is not { } insets) return;
+        insets.SafeAreaChanged += OnSafeAreaChanged;
+        ApplySafeArea(insets.SafeAreaPadding);
+    }
+
+    protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
+    {
+        if (Host?.InsetsManager is { } insets) insets.SafeAreaChanged -= OnSafeAreaChanged;
+        base.OnDetachedFromVisualTree(e);
+    }
+
+    private void OnSafeAreaChanged(object? sender, SafeAreaChangedArgs e) => ApplySafeArea(e.SafeAreaPadding);
+
+    private void ApplySafeArea(Thickness safe)
+    {
+        _safeArea = safe;
+        MainContent.Margin = safe;
+        InspectorContent.Margin = InspectorMargin();
+        SizeInspector(Bounds.Size);
+    }
+
+    private Thickness InspectorMargin()
+    {
+        var edge = _compact ? 12 : 40;
+        return new Thickness(edge + _safeArea.Left, edge + _safeArea.Top, edge + _safeArea.Right, edge + _safeArea.Bottom);
+    }
+
     protected override void OnSizeChanged(SizeChangedEventArgs e)
     {
         base.OnSizeChanged(e);
@@ -59,16 +93,25 @@ public sealed partial class MainView : UserControl
     private void SizeInspector(Size client)
     {
         var dish = _compact
-            ? Math.Max(0, Math.Min(client.Width - 24, client.Height * 0.4))
+            ? Math.Max(0, Math.Min(client.Width - 24, (client.Height - _safeArea.Top - _safeArea.Bottom) * 0.42))
             : Math.Clamp(Math.Min(client.Height - 200, client.Width - 380 - 52 - 160), 320, 620);
         InspectStage.Width = dish;
         InspectStage.Height = dish;
     }
 
-    // Phones in portrait stack the bench and rack above the controls, with placing a dish kept in reach.
+    private void FitSeedRows()
+    {
+        SeedRowsScroll.MaxHeight = double.PositiveInfinity;
+        InspectorLayer.UpdateLayout();
+        var free = Bounds.Height - InspectorContent.Margin.Top - InspectorContent.Margin.Bottom
+            - InspectStage.Height - InspectStage.Margin.Bottom;
+        var over = InspectCard.DesiredSize.Height - free;
+        if (over > 0) SeedRowsScroll.MaxHeight = Math.Max(64, SeedRowsScroll.DesiredSize.Height - over);
+    }
+
     private void ApplyLayout(bool compact, Size size)
     {
-        StageArea.Height = compact ? Math.Round(size.Height * 0.5) : double.NaN;
+        StageArea.Height = compact ? Math.Round((size.Height - _safeArea.Top - _safeArea.Bottom) * 0.5) : double.NaN;
         if (compact == _compact) return;
         _compact = compact;
 
@@ -85,20 +128,35 @@ public sealed partial class MainView : UserControl
         BenchDetail.TextWrapping = compact ? TextWrapping.Wrap : TextWrapping.NoWrap;
         BenchDetail.FontSize = compact ? 13 : 14;
         BenchEmptyText.FontSize = compact ? 30 : 18;
+        SetTouchSliders(compact);
 
         Move(PlaceBlock, compact ? PanelDock : PanelStack, compact ? Dock.Top : null, compact ? 0 : 3);
         PlaceBlock.Margin = compact ? new Thickness(0, 0, 0, 14) : default;
-        Move(PaletteBlock, compact ? PanelStack : PanelDock, compact ? null : Dock.Bottom, compact ? PanelStack.Children.Count : 1);
         Move(PanelFooter, compact ? PanelStack : PanelDock, compact ? null : Dock.Bottom, compact ? PanelStack.Children.Count : 1);
 
         InspectorContent.ColumnDefinitions = compact ? new ColumnDefinitions("*") : new ColumnDefinitions("Auto,380");
         InspectorContent.RowDefinitions = compact ? new RowDefinitions("Auto,Auto") : new RowDefinitions("*");
-        InspectorContent.Margin = compact ? new Thickness(12) : new Thickness(40);
+        InspectorContent.Margin = InspectorMargin();
         Grid.SetColumn(InspectCard, compact ? 0 : 1);
         Grid.SetRow(InspectCard, compact ? 1 : 0);
         InspectStage.Margin = compact ? new Thickness(0, 0, 0, 12) : new Thickness(0, 0, 52, 0);
         InspectCard.Padding = compact ? new Thickness(18) : new Thickness(26);
-        SeedRowsScroll.MaxHeight = compact ? 180 : 330;
+        SeedRowsScroll.MaxHeight = compact ? double.PositiveInfinity : 330;
+    }
+
+    private void SetTouchSliders(bool touch)
+    {
+        var resources = PanelStack.Resources;
+        if (!touch)
+        {
+            foreach (var key in new[] { "SliderHorizontalThumbWidth", "SliderHorizontalThumbHeight", "SliderThumbCornerRadius", "SliderTrackThemeHeight" })
+                resources.Remove(key);
+            return;
+        }
+        resources["SliderHorizontalThumbWidth"] = 30.0;
+        resources["SliderHorizontalThumbHeight"] = 30.0;
+        resources["SliderThumbCornerRadius"] = new CornerRadius(15);
+        resources["SliderTrackThemeHeight"] = 6.0;
     }
 
     private static void Move(Control control, Panel to, Dock? dock, int index)
@@ -299,25 +357,37 @@ public sealed partial class MainView : UserControl
     private async void OnExportRequested(object? sender, EventArgs e)
     {
         if (_vm is null || Host is not { } host) return;
-        var folders = await host.StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
-        {
-            Title = "Choose where to save the run",
-            AllowMultiple = false,
-        });
-        if (folders.Count == 0) return;
-        var folder = folders[0];
         var name = $"Seed run {DateTime.Now:yyyy-MM-dd HHmm}";
+        using var picture = RenderPicture();
+        var rack = _vm.Rack;
+        ExportFile[] files =
+        [
+            new($"{name} seeds.csv", "text/csv", s =>
+            {
+                using var writer = new StreamWriter(s);
+                writer.Write(RunCsv.Write(rack));
+            }),
+            new($"{name} templates.pdf", "application/pdf", s => TemplatePdf.Write(s, rack)),
+            new($"{name} rack.png", "image/png", s => picture.Save(s, new PngBitmapEncoderOptions())),
+        ];
 
         try
         {
-            await WriteFile(folder, $"{name} seeds.csv", s =>
+            if (PhoneFiles.SaveToDownloads is { } save)
             {
-                using var writer = new StreamWriter(s);
-                writer.Write(RunCsv.Write(_vm.Rack));
+                var place = await save(name, files);
+                ShowExportStatus($"Saved the seed positions, rack picture and printable templates to {place}.");
+                return;
+            }
+
+            var folders = await host.StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
+            {
+                Title = "Choose where to save the run",
+                AllowMultiple = false,
             });
-            await WriteFile(folder, $"{name} templates.pdf", s => TemplatePdf.Write(s, _vm.Rack));
-            using var picture = RenderPicture();
-            await WriteFile(folder, $"{name} rack.png", s => picture.Save(s, new PngBitmapEncoderOptions()));
+            if (folders.Count == 0) return;
+            var folder = folders[0];
+            foreach (var file in files) await WriteFile(folder, file.Name, file.Write);
             ShowExportStatus($"Saved the seed positions, rack picture and printable templates to {folder.Name}.");
             await host.Launcher.LaunchFileAsync(folder);
         }
@@ -396,13 +466,15 @@ public sealed partial class MainView : UserControl
     private RenderTargetBitmap RenderPicture()
     {
         const double scale = 2;
-        var size = Root.Bounds.Size;
-        var bitmap = new RenderTargetBitmap(new PixelSize((int)(size.Width * scale), (int)(size.Height * scale)));
+        var area = _compact && BoundsIn(PanelBorder, Root) is { } panel
+            ? new Rect(0, _safeArea.Top, Root.Bounds.Width, panel.Y - _safeArea.Top)
+            : new Rect(Root.Bounds.Size);
+        var bitmap = new RenderTargetBitmap(new PixelSize((int)(area.Width * scale), (int)(area.Height * scale)));
         using var context = bitmap.CreateDrawingContext();
-        using (context.PushTransform(Matrix.CreateScale(scale, scale)))
+        using (context.PushTransform(Matrix.CreateTranslation(-area.X, -area.Y) * Matrix.CreateScale(scale, scale)))
         {
             var brush = new VisualBrush(Root) { Stretch = Stretch.None, AlignmentX = AlignmentX.Left, AlignmentY = AlignmentY.Top };
-            context.DrawRectangle(brush, null, new Rect(size));
+            context.DrawRectangle(brush, null, new Rect(Root.Bounds.Size));
         }
         return bitmap;
     }
@@ -453,6 +525,8 @@ public sealed partial class MainView : UserControl
         InspectDish.HighlightedSeed = -1;
         CopyButton.Content = "Copy";
         InspectorLayer.IsVisible = true;
+        // The card's bindings catch up with the new dish after this handler, so measure once they have.
+        if (_compact) Dispatcher.UIThread.Post(FitSeedRows);
 
         _ = Motion.Tween(InspectorLayer, TimeSpan.FromMilliseconds(260), t =>
         {

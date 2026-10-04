@@ -54,15 +54,16 @@ Download the latest build from the [Releases page](https://github.com/Nic-Richar
   move the app to Applications. The first time, right-click it and choose **Open**.
 - **Linux:** extract `SeedPlacementRandomizer-<version>-linux-x64.tar.gz` and run
   `./SeedPlacementRandomizer`. It is self-contained and needs no .NET install.
-- **Android:** open `SeedPlacementRandomizer-<version>-android.apk` on the phone. Android asks once
+- **Android 10 or later:** open `SeedPlacementRandomizer-<version>-android.apk` on the phone. Android asks once
   to allow installs from the browser or file app you opened it with. Later versions install over the
   old one and keep the saved run.
 
-Print templates at actual size (100%). Each page has a line that should measure 50 mm.
+Print templates at actual size (100%). Each page has a line that should measure 50 mm. On the phone,
+**Export** saves the same files to `Downloads/Seed Placement/`.
 
 ### Moving a run between a computer and a phone
 
-**Save run** writes the whole rack to a `.seedrun` file, and **Open run** replaces the rack with one.
+Under **Run**, **Save** writes the whole rack to a `.seedrun` file, and **Open** replaces the rack with one.
 The file holds each dish's layout code, slot, label and seed type, so the other device rebuilds the
 exact same dishes.
 
@@ -71,7 +72,7 @@ exact same dishes.
   across and open it in the desktop app. To go the other way, copy a saved run into the phone's
   Download folder and open it from the phone app. Macs need
   [Android File Transfer](https://www.android.com/filetransfer/) or a similar app to see the phone.
-- **Any other way:** the phone app's **Share run** sends the file through the share sheet, to email,
+- **Any other way:** the phone app's **Share** sends the file through the share sheet, to email,
   a chat app or cloud storage.
 
 <img src="docs/screenshots/phone-rack.png" alt="The phone app" width="300">

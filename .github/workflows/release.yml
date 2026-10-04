@@ -75,8 +75,7 @@ jobs:
       - run: dotnet workload install android
       - run: dotnet build src/SeedPlacement.Android -t:InstallAndroidDependencies -f net10.0-android -p:AcceptAndroidSDKLicenses=True
       - name: Package
-        # Every release is signed with the same key, so a new APK installs over the old one and keeps the saved run.
-        # The version code must grow with each release: 1.2.3 becomes 10203.
+        # The same key on every release lets a new APK install over the old one. Version codes must grow: 1.2.3 is 10203.
         env:
           KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
           KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}

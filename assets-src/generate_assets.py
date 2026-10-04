@@ -12,7 +12,7 @@ from scipy.ndimage import gaussian_filter
 
 OUT = Path(__file__).resolve().parent.parent / "src" / "SeedPlacement.App" / "Assets"
 MACOS = Path(__file__).resolve().parent.parent / "packaging" / "macos"
-ANDROID = Path(__file__).resolve().parent.parent / "src" / "SeedPlacement.Android" / "Resources" / "drawable"
+ANDROID = Path(__file__).resolve().parent.parent / "src" / "SeedPlacement.Android" / "Resources"
 SS = 3  # supersampling factor
 
 
@@ -169,8 +169,67 @@ def bench(size=512):
     save_rgba(OUT / "bench-grain.png", rgb, np.clip(np.abs(signal), 0, 1))
 
 
+def over(rgb, alpha, layer_alpha, color):
+    """Straight-alpha "over" of a flat or per-pixel color onto rgb/alpha."""
+    out = layer_alpha + alpha * (1 - layer_alpha)
+    blended = layer_alpha[..., None] * color + (rgb * (alpha * (1 - layer_alpha))[..., None])
+    return np.where(out[..., None] > 0, blended / np.maximum(out, 1e-9)[..., None], 0), out
+
+
+def dish_art(rgb, alpha, s, radius):
+    """Paper, five seeds, glass rim and a sprout, drawn over rgb/alpha. Also returns a silhouette."""
+    y, x = np.mgrid[0:s, 0:s].astype(float) + 0.5
+    c = s / 2
+    d = np.hypot(x - c, y - c)
+    R = radius
+    paper_r = R * 0.93
+    paper_mask = np.clip(paper_r - d + 0.5, 0, 1)
+    paper = 0.93 - 0.10 * np.clip((d / paper_r - 0.75) / 0.25, 0, 1)
+    rgb, alpha = over(rgb, alpha, paper_mask, paper[..., None] * np.array([1, 0.995, 0.975]))
+
+    seed_img = Image.open(OUT / "Seeds" / "cucumber-0.png").convert("RGBA")
+    canvas = Image.fromarray((np.dstack([np.clip(rgb, 0, 1), alpha]) * 255).round().astype(np.uint8), "RGBA")
+    seeds = Image.new("RGBA", canvas.size)
+    spots = [(-0.16, -0.14, 25), (0.15, -0.17, -40), (0.02, 0.02, 80), (-0.15, 0.16, -10), (0.17, 0.13, 50)]
+    seed_len = R * 0.42
+    unit = R / 0.34
+    for sx, sy, angle in spots:
+        sprite = seed_img.resize((int(seed_len / SEED_FILL), int(seed_len / SEED_FILL)), Image.LANCZOS)
+        sprite = sprite.rotate(angle, resample=Image.BICUBIC, expand=True)
+        at = (int(c + sx * unit - sprite.width / 2), int(c + sy * unit - sprite.height / 2))
+        canvas.alpha_composite(sprite, at)
+        seeds.alpha_composite(sprite, at)
+
+    arr = np.asarray(canvas).astype(float) / 255
+    rgb, alpha = arr[..., :3], arr[..., 3]
+    ring = np.clip(1 - np.abs(d - R * 0.965) / (R * 0.04), 0, 1)
+    angle = np.arctan2(y - c, x - c)
+    lit = 0.35 + 0.65 * np.clip(np.cos(angle + 2.3), 0, 1) ** 2
+    rgb, alpha = over(rgb, alpha, ring * 0.7, lit[..., None] * np.array([0.93, 0.96, 1.0]))
+    sprout = np.clip(1 - np.hypot(x - c - R * 0.72, y - c + R * 0.72) / (unit * 0.07), 0, 1)
+    sprout = np.clip(sprout * 6, 0, 1)
+    rgb, alpha = over(rgb, alpha, sprout, np.array([0.66, 0.86, 0.43]))
+
+    silhouette = np.maximum.reduce([ring, np.asarray(seeds)[..., 3] / 255, sprout])
+    return rgb, alpha, silhouette
+
+
+def bench_backdrop(s, radius):
+    y, x = np.mgrid[0:s, 0:s].astype(float) + 0.5
+    c = s / 2
+    grad = 0.16 - 0.07 * (y / s)
+    rgb = np.dstack([grad * 0.92, grad, grad * 1.04])
+    shadow = np.clip(1 - np.hypot(x - c - s * 0.02, y - c - s * 0.035) / (radius * 1.1), 0, 1) ** 1.5
+    return rgb * (1 - 0.5 * shadow)[..., None]
+
+
+def to_image(rgb, alpha, size):
+    img = Image.fromarray((np.dstack([np.clip(rgb, 0, 1), np.clip(alpha, 0, 1)]) * 255).round().astype(np.uint8), "RGBA")
+    return img.resize((size, size), Image.LANCZOS)
+
+
 def icon(size=1024):
-    """Dark rounded tile with a glass dish holding five seeds: the window icon, a 64 px PNG, the macOS .icns and the Android launcher icon."""
+    """Dark rounded tile with a glass dish holding five seeds: the window icon, a 64 px PNG and the macOS .icns."""
     s = size * SS
     y, x = np.mgrid[0:s, 0:s].astype(float) + 0.5
     c = s / 2
@@ -181,46 +240,26 @@ def icon(size=1024):
         return np.hypot(qx, qy) - radius
 
     tile = np.clip(0.5 - rounded_rect(s * 0.2, s * 0.04), 0, 1)
-    grad = 0.16 - 0.07 * (y / s)
-    rgb = np.dstack([grad * 0.92, grad, grad * 1.04])
-    alpha = tile.copy()
-
-    d = np.hypot(x - c, y - c)
     R = s * 0.34
-    shadow = np.clip(1 - np.hypot(x - c - s * 0.02, y - c - s * 0.035) / (R * 1.1), 0, 1) ** 1.5
-    rgb *= (1 - 0.5 * shadow)[..., None]
-    paper_r = R * 0.93
-    paper_mask = np.clip(paper_r - d + 0.5, 0, 1)
-    paper = 0.93 - 0.10 * np.clip((d / paper_r - 0.75) / 0.25, 0, 1)
-    rgb = rgb * (1 - paper_mask[..., None]) + (paper * paper_mask)[..., None] * np.array([1, 0.995, 0.975])
-
-    seed_img = Image.open(OUT / "Seeds" / "cucumber-0.png").convert("RGBA")
-    canvas = Image.fromarray((np.dstack([np.clip(rgb, 0, 1), alpha]) * 255).round().astype(np.uint8), "RGBA")
-    spots = [(-0.16, -0.14, 25), (0.15, -0.17, -40), (0.02, 0.02, 80), (-0.15, 0.16, -10), (0.17, 0.13, 50)]
-    seed_len = R * 0.42
-    for sx, sy, angle in spots:
-        sprite = seed_img.resize((int(seed_len / SEED_FILL), int(seed_len / SEED_FILL)), Image.LANCZOS)
-        sprite = sprite.rotate(angle, resample=Image.BICUBIC, expand=True)
-        canvas.alpha_composite(sprite, (int(c + sx * s - sprite.width / 2), int(c + sy * s - sprite.height / 2)))
-
-    arr = np.asarray(canvas).astype(float) / 255
-    rgb, alpha = arr[..., :3], arr[..., 3]
-    ring = np.clip(1 - np.abs(d - R * 0.965) / (R * 0.04), 0, 1)
-    angle = np.arctan2(y - c, x - c)
-    lit = 0.35 + 0.65 * np.clip(np.cos(angle + 2.3), 0, 1) ** 2
-    rgb = rgb * (1 - ring[..., None] * 0.7) + (ring * lit)[..., None] * np.array([0.93, 0.96, 1.0]) * 0.7
-    sprout = np.clip(1 - np.hypot(x - c - R * 0.72, y - c + R * 0.72) / (s * 0.07), 0, 1)
-    sprout = np.clip(sprout * 6, 0, 1)
-    rgb = rgb * (1 - sprout[..., None]) + sprout[..., None] * np.array([0.66, 0.86, 0.43])
-
-    img = Image.fromarray((np.dstack([np.clip(rgb, 0, 1), alpha]) * 255).round().astype(np.uint8), "RGBA")
-    img = img.resize((size, size), Image.LANCZOS)
+    rgb, alpha, _ = dish_art(bench_backdrop(s, R), tile.copy(), s, R)
+    img = to_image(rgb, tile, size)
     img.save(OUT / "icon.ico", sizes=[(16, 16), (24, 24), (32, 32), (48, 48), (64, 64), (128, 128), (256, 256)])
     img.resize((64, 64), Image.LANCZOS).save(OUT / "icon-64.png", optimize=True)
     MACOS.mkdir(parents=True, exist_ok=True)
     img.save(MACOS / "icon.icns")
-    ANDROID.mkdir(parents=True, exist_ok=True)
-    img.resize((192, 192), Image.LANCZOS).save(ANDROID / "icon.png", optimize=True)
+
+
+def android_icon(size=432):
+    """Android adaptive icon layers on the 108 dp canvas (432 px at xxxhdpi). Launchers mask them to
+    their own shape and only show the middle 72 dp, so the dish sits well inside it."""
+    s = size * SS
+    R = s * 0.22
+    rgb, alpha, silhouette = dish_art(np.zeros((s, s, 3)), np.zeros((s, s)), s, R)
+    drawables = ANDROID / "drawable-xxxhdpi"
+    drawables.mkdir(parents=True, exist_ok=True)
+    to_image(bench_backdrop(s, R), np.ones((s, s)), size).save(drawables / "icon_background.png", optimize=True)
+    to_image(rgb, alpha, size).save(drawables / "icon_foreground.png", optimize=True)
+    to_image(np.ones((s, s, 3)), silhouette, size).save(drawables / "icon_monochrome.png", optimize=True)
 
 
 if __name__ == "__main__":
@@ -231,4 +270,5 @@ if __name__ == "__main__":
     paper()
     bench()
     icon()
+    android_icon()
     print(f"Wrote textures to {OUT}")

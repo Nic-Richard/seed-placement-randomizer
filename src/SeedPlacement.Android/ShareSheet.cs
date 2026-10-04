@@ -5,7 +5,6 @@ using JavaFile = Java.IO.File;
 
 namespace SeedPlacement.Android;
 
-/// <summary>Hands a run file to the Android share sheet, so it can go to Discord, email or another device.</summary>
 internal static class ShareSheet
 {
     public static async Task ShareAsync(string name, string contents)

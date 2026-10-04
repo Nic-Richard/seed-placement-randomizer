@@ -16,7 +16,7 @@ jobs:
       - uses: actions/setup-dotnet@v6
         with:
           global-json-file: global.json
-      # The Android app builds in its own job, so these runners skip the Android workload.
+      # Android builds in its own job, so these runners don't need the Android workload.
       - run: |
           dotnet build src/SeedPlacement.Desktop -c Release
           dotnet build tools/SeedPlacement.Snapshots -c Release
