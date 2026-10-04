@@ -47,6 +47,15 @@ if (!options)
     Save("rack");
     Inspect();
     Save("inspector");
+    CloseInspector();
+
+    window.MinWidth = window.MinHeight = 0;
+    window.Width = 412;
+    window.Height = 915;
+    Pump(400);
+    Save("phone-rack");
+    Inspect();
+    Save("phone-inspector");
     return;
 }
 

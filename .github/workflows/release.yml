@@ -16,12 +16,12 @@ jobs:
       - uses: actions/setup-dotnet@v6
         with:
           global-json-file: global.json
-      - run: dotnet test -c Release
+      - run: dotnet test tests/SeedPlacement.Tests -c Release
       - name: Publish
         shell: bash
         run: |
           version="${GITHUB_REF_NAME#v}"
-          dotnet publish src/SeedPlacement.App -c Release -r win-x64 -o out -p:Version="$version"
+          dotnet publish src/SeedPlacement.Desktop -c Release -r win-x64 -o out -p:Version="$version"
           mv out/SeedPlacementRandomizer.exe "SeedPlacementRandomizer-$version-win-x64.exe"
       - uses: actions/upload-artifact@v7
         with:
@@ -57,7 +57,7 @@ jobs:
         # A tarball keeps the executable bit, which a plain download would lose.
         run: |
           version="${GITHUB_REF_NAME#v}"
-          dotnet publish src/SeedPlacement.App -c Release -r linux-x64 -o out -p:Version="$version"
+          dotnet publish src/SeedPlacement.Desktop -c Release -r linux-x64 -o out -p:Version="$version"
           chmod +x out/SeedPlacementRandomizer
           tar -czf "SeedPlacementRandomizer-$version-linux-x64.tar.gz" -C out SeedPlacementRandomizer
       - uses: actions/upload-artifact@v7
@@ -65,8 +65,35 @@ jobs:
           name: linux
           path: SeedPlacementRandomizer-*-linux-x64.tar.gz
 
+  android:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+      - run: dotnet workload install android
+      - run: dotnet build src/SeedPlacement.Android -t:InstallAndroidDependencies -f net10.0-android -p:AcceptAndroidSDKLicenses=True
+      - name: Package
+        # Every release is signed with the same key, so a new APK installs over the old one and keeps the saved run.
+        # The version code must grow with each release: 1.2.3 becomes 10203.
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          IFS=. read -r major minor patch <<< "$version"
+          code=$((major * 10000 + minor * 100 + patch))
+          echo "$KEYSTORE_BASE64" | base64 -d > release.keystore
+          dotnet publish src/SeedPlacement.Android -c Release -f net10.0-android -o out             -p:Version="$version" -p:ApplicationVersion="$code" -p:PhoneRelease=true             -p:AndroidKeyStore=true -p:AndroidSigningKeyStore="$PWD/release.keystore"             -p:AndroidSigningKeyAlias=seedplacement             -p:AndroidSigningKeyPass=env:KEYSTORE_PASSWORD -p:AndroidSigningStorePass=env:KEYSTORE_PASSWORD
+          mv out/*-Signed.apk "SeedPlacementRandomizer-$version-android.apk"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: android
+          path: SeedPlacementRandomizer-*-android.apk
+
   release:
-    needs: [windows, macos, linux]
+    needs: [windows, macos, linux, android]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7

@@ -21,6 +21,10 @@ public sealed class App : Application
         {
             desktop.MainWindow = new MainWindow { DataContext = new MainViewModel(AppSettings.Load(), new RunStore()) };
         }
+        else if (ApplicationLifetime is ISingleViewApplicationLifetime single)
+        {
+            single.MainView = new MainView { DataContext = new MainViewModel(AppSettings.Load(), new RunStore()) };
+        }
         base.OnFrameworkInitializationCompleted();
     }
 }

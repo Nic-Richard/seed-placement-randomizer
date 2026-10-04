@@ -46,7 +46,10 @@ public sealed class MainViewModel : ObservableObject
         PlaceFromCodeCommand = new RelayCommand(() => _ = PlaceFromCodeAsync(), () => CanGenerate);
         ToggleCodeEntryCommand = new RelayCommand(() => IsCodeEntryOpen = !IsCodeEntryOpen);
         ExportCommand = new RelayCommand(() => ExportRequested?.Invoke(this, EventArgs.Empty), () => _rack.Occupied > 0);
-        RestoreRun();
+        SaveRunFileCommand = new RelayCommand(() => SaveRunFileRequested?.Invoke(this, EventArgs.Empty), () => _rack.Occupied > 0);
+        ShareRunCommand = new RelayCommand(() => _ = ShareRunAsync(), () => _rack.Occupied > 0);
+        OpenRunFileCommand = new RelayCommand(() => OpenRunFileRequested?.Invoke(this, EventArgs.Empty), () => !_generating);
+        if (_store?.Load() is { } saved) Load(saved);
     }
 
     /// <summary>Raised after a dish is placed on the rack, so the view can animate it there.</summary>
@@ -55,6 +58,12 @@ public sealed class MainViewModel : ObservableObject
     public event EventHandler<DishRemovedEventArgs>? DishRemoved;
 
     public event EventHandler? ExportRequested;
+
+    public event EventHandler? SaveRunFileRequested;
+
+    public event EventHandler? OpenRunFileRequested;
+
+    public event EventHandler? RunOpened;
 
     public ObservableCollection<SlotViewModel> Slots { get; }
 
@@ -73,6 +82,14 @@ public sealed class MainViewModel : ObservableObject
     public RelayCommand ToggleCodeEntryCommand { get; }
 
     public RelayCommand ExportCommand { get; }
+
+    public RelayCommand SaveRunFileCommand { get; }
+
+    public RelayCommand OpenRunFileCommand { get; }
+
+    public RelayCommand ShareRunCommand { get; }
+
+    public bool CanShareRun => RunSharing.IsAvailable;
 
     public Rack Rack => _rack;
 
@@ -313,9 +330,37 @@ public sealed class MainViewModel : ObservableObject
         RefreshRack();
     }
 
-    private void RestoreRun()
+    /// <summary>Replaces the rack with a run read from a file, or returns false if the file is not a run.</summary>
+    public bool OpenRunFile(string json)
     {
-        if (_store?.Load() is not { } record) return;
+        if (_generating || RunRecord.FromJson(json) is not { } record) return false;
+        var restored = new Rack();
+        try
+        {
+            record.RestoreInto(restored);
+        }
+        catch (Exception e) when (e is ArgumentException or FormatException)
+        {
+            return false;
+        }
+        ClearRack();
+        Load(record);
+        SaveRun();
+        RunOpened?.Invoke(this, EventArgs.Empty);
+        return true;
+    }
+
+    public const string RunFileExtension = "seedrun";
+
+    public string RunFileName() => $"Seed run {DateTime.Now:yyyy-MM-dd HHmm}";
+
+    private Task ShareRunAsync() =>
+        RunSharing.Share?.Invoke($"{RunFileName()}.{RunFileExtension}", RunFileText()) ?? Task.CompletedTask;
+
+    public string RunFileText() => RunRecord.From(_rack).ToJson();
+
+    private void Load(RunRecord record)
+    {
         try
         {
             record.RestoreInto(_rack);
@@ -346,5 +391,8 @@ public sealed class MainViewModel : ObservableObject
         ClearRackCommand.Refresh();
         PlaceFromCodeCommand.Refresh();
         ExportCommand.Refresh();
+        SaveRunFileCommand.Refresh();
+        OpenRunFileCommand.Refresh();
+        ShareRunCommand.Refresh();
     }
 }

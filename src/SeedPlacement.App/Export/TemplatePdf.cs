@@ -125,7 +125,7 @@ public static class TemplatePdf
 
     private static SKTypeface LoadFont(string file)
     {
-        using var stream = AssetLoader.Open(new Uri($"avares://SeedPlacementRandomizer/Assets/Fonts/{file}"));
+        using var stream = AssetLoader.Open(new Uri($"avares://SeedPlacement.App/Assets/Fonts/{file}"));
         return SKTypeface.FromStream(stream);
     }
 }

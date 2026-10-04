@@ -1,6 +1,6 @@
 using Avalonia;
 
-namespace SeedPlacement.App;
+namespace SeedPlacement.Desktop;
 
 internal static class Program
 {
@@ -9,7 +9,7 @@ internal static class Program
         BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
 
     public static AppBuilder BuildAvaloniaApp() =>
-        AppBuilder.Configure<App>()
+        AppBuilder.Configure<SeedPlacement.App.App>()
             .UsePlatformDetect()
             .LogToTrace();
 }
