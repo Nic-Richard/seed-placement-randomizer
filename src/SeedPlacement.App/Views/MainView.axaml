@@ -295,12 +295,14 @@
               </Button>
             </StackPanel>
 
-            <StackPanel Margin="0,22,0,0" Spacing="4">
-              <Grid ColumnDefinitions="52,*,*" Margin="10,0">
+            <DockPanel Margin="0,22,0,0">
+              <Grid DockPanel.Dock="Top" ColumnDefinitions="52,*,*" Margin="10,0,10,4">
                 <TextBlock Classes="muted" FontSize="13" Text="Seed" />
                 <TextBlock Grid.Column="1" Classes="muted" FontSize="13" Text="x, mm" HorizontalAlignment="Right" />
                 <TextBlock Grid.Column="2" Classes="muted" FontSize="13" Text="y, mm" HorizontalAlignment="Right" />
               </Grid>
+              <TextBlock DockPanel.Dock="Bottom" Classes="faint" FontSize="12" TextWrapping="Wrap" Margin="10,10,0,0" LineHeight="18"
+                         Text="Measured from the dish center. Positive x is to the right, positive y is toward the top of the screen." />
               <ScrollViewer x:Name="SeedRowsScroll" MaxHeight="330">
                 <ItemsControl ItemsSource="{Binding Rows}">
                   <ItemsControl.ItemTemplate>
@@ -317,9 +319,7 @@
                   </ItemsControl.ItemTemplate>
                 </ItemsControl>
               </ScrollViewer>
-              <TextBlock Classes="faint" FontSize="12" TextWrapping="Wrap" Margin="10,6,0,0" LineHeight="18"
-                         Text="Measured from the dish center. Positive x is to the right, positive y is toward the top of the screen." />
-            </StackPanel>
+            </DockPanel>
           </DockPanel>
         </Border>
       </Grid>

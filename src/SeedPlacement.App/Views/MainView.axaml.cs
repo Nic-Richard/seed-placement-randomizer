@@ -11,7 +11,6 @@ using Avalonia.Interactivity;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using Avalonia.Platform.Storage;
-using Avalonia.Threading;
 using Avalonia.VisualTree;
 using SeedPlacement.App.Controls;
 using SeedPlacement.App.Export;
@@ -96,20 +95,17 @@ public sealed partial class MainView : UserControl
     private void SizeInspector(Size client)
     {
         var dish = _compact
-            ? Math.Max(0, Math.Min(client.Width - 24, (client.Height - _safeArea.Top - _safeArea.Bottom) * 0.42))
+            ? Math.Max(0, CompactDish(client))
             : Math.Clamp(Math.Min(client.Height - 200, client.Width - 380 - 52 - 160), 320, 620);
         InspectStage.Width = dish;
         InspectStage.Height = dish;
     }
 
-    private void FitSeedRows()
+    // Short phones give up some dish so the card below still has room for a few coordinate rows.
+    private double CompactDish(Size client)
     {
-        SeedRowsScroll.MaxHeight = double.PositiveInfinity;
-        InspectorLayer.UpdateLayout();
-        var free = Bounds.Height - InspectorContent.Margin.Top - InspectorContent.Margin.Bottom
-            - InspectStage.Height - InspectStage.Margin.Bottom;
-        var over = InspectCard.DesiredSize.Height - free;
-        if (over > 0) SeedRowsScroll.MaxHeight = Math.Max(64, SeedRowsScroll.DesiredSize.Height - over);
+        var usable = client.Height - _safeArea.Top - _safeArea.Bottom - 24;
+        return Math.Min(client.Width - 24, Math.Min(usable * 0.42, usable - 440));
     }
 
     private void ApplyLayout(bool compact, Size size)
@@ -138,7 +134,10 @@ public sealed partial class MainView : UserControl
         Move(PanelFooter, compact ? PanelStack : PanelDock, compact ? null : Dock.Bottom, compact ? PanelStack.Children.Count : 1);
 
         InspectorContent.ColumnDefinitions = compact ? new ColumnDefinitions("*") : new ColumnDefinitions("Auto,380");
-        InspectorContent.RowDefinitions = compact ? new RowDefinitions("Auto,Auto") : new RowDefinitions("*");
+        // On a phone the inspector fills the screen and the coordinate list takes whatever height is left.
+        InspectorContent.RowDefinitions = compact ? new RowDefinitions("Auto,*") : new RowDefinitions("*");
+        InspectorContent.VerticalAlignment = compact ? Avalonia.Layout.VerticalAlignment.Stretch : Avalonia.Layout.VerticalAlignment.Center;
+        InspectCard.VerticalAlignment = compact ? Avalonia.Layout.VerticalAlignment.Top : Avalonia.Layout.VerticalAlignment.Center;
         InspectorContent.Margin = InspectorMargin();
         Grid.SetColumn(InspectCard, compact ? 0 : 1);
         Grid.SetRow(InspectCard, compact ? 1 : 0);
@@ -432,7 +431,7 @@ public sealed partial class MainView : UserControl
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
-            ShowExportStatus($"Couldn't save the run: {ex.Message}");
+            ShowExportStatus("Couldn't save the run there. To put it on a phone, save it on this computer, then drag the file into the phone's Download folder.");
         }
     }
 
@@ -454,11 +453,12 @@ public sealed partial class MainView : UserControl
         string text;
         try
         {
+            // Read on the UI thread: a file dragged from a phone in Explorer is a COM stream that throws on any other.
             await using var stream = await file.OpenReadAsync();
             using var reader = new StreamReader(stream);
-            text = await reader.ReadToEndAsync();
+            text = reader.ReadToEnd();
         }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        catch (Exception ex)
         {
             ShowExportStatus($"Couldn't open the run: {ex.Message}");
             return;
@@ -591,8 +591,6 @@ public sealed partial class MainView : UserControl
         InspectDish.HighlightedSeed = -1;
         CopyButton.Content = "Copy";
         InspectorLayer.IsVisible = true;
-        // The card's bindings catch up with the new dish after this handler, so measure once they have.
-        if (_compact) Dispatcher.UIThread.Post(FitSeedRows);
 
         _ = Motion.Tween(InspectorLayer, TimeSpan.FromMilliseconds(260), t =>
         {
