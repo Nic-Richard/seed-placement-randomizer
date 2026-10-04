@@ -34,12 +34,6 @@
             <TextBlock x:Name="VersionText" Grid.Column="1" Classes="muted" FontSize="13" VerticalAlignment="Center" />
           </Grid>
 
-          <StackPanel x:Name="PaletteBlock" DockPanel.Dock="Bottom" Spacing="8" Margin="0,0,0,22">
-            <Border Height="1" Background="{DynamicResource HairlineBrush}" Margin="0,0,0,12" />
-            <TextBlock Classes="label" Text="Bench colour" />
-            <ComboBox ItemsSource="{Binding Palettes}" SelectedItem="{Binding SelectedPalette}"
-                      HorizontalAlignment="Stretch" FontSize="14" />
-          </StackPanel>
 
           <ScrollViewer VerticalScrollBarVisibility="Auto" Margin="0,0,-14,0" Padding="0,0,14,0">
           <StackPanel x:Name="PanelStack" Spacing="20" Margin="0,0,0,8">
@@ -141,19 +135,30 @@
                   </DataTemplate>
                 </ItemsControl.ItemTemplate>
               </ItemsControl>
-              <WrapPanel ItemSpacing="8" LineSpacing="8" Margin="0,4,0,0">
-                <Button Classes="ghost" Content="Export run" Command="{Binding ExportCommand}"
+              <Button Classes="ghost" Classes.danger="{Binding IsClearArmed}" Content="{Binding ClearLabel}"
+                      Command="{Binding ClearRackCommand}" HorizontalAlignment="Left" Margin="0,4,0,0" />
+            </StackPanel>
+
+            <StackPanel Spacing="10">
+              <TextBlock Classes="label" Text="Run" />
+              <WrapPanel ItemSpacing="8" LineSpacing="8">
+                <Button Classes="ghost" Content="Export" Command="{Binding ExportCommand}"
                         ToolTip.Tip="Saves seed positions (CSV), a picture of the rack and printable templates" />
-                <Button Classes="ghost" Classes.danger="{Binding IsClearArmed}" Content="{Binding ClearLabel}"
-                        Command="{Binding ClearRackCommand}" />
-                <Button Classes="ghost" Content="Save run" Command="{Binding SaveRunFileCommand}"
-                        ToolTip.Tip="Saves the whole rack to a file another computer or phone can open" />
-                <Button Classes="ghost" Content="Open run" Command="{Binding OpenRunFileCommand}"
-                        ToolTip.Tip="Replaces the rack with a saved run" />
-                <Button Classes="ghost" Content="Share run" Command="{Binding ShareRunCommand}"
+                <Button Classes="ghost" Content="Share" Command="{Binding ShareRunCommand}"
                         IsVisible="{Binding CanShareRun}" />
+                <Button Classes="ghost" Content="Open" Command="{Binding OpenRunFileCommand}"
+                        ToolTip.Tip="Replaces the rack with a saved run file" />
+                <Button Classes="ghost" Content="Save" Command="{Binding SaveRunFileCommand}"
+                        ToolTip.Tip="Saves the rack to a run file another computer or phone can open" />
               </WrapPanel>
               <TextBlock x:Name="ExportStatus" Classes="muted" FontSize="12" TextWrapping="Wrap" IsVisible="False" />
+            </StackPanel>
+
+            <StackPanel x:Name="PaletteBlock" Spacing="8">
+              <Border Height="1" Background="{DynamicResource HairlineBrush}" Margin="0,0,0,12" />
+              <TextBlock Classes="label" Text="Bench colour" />
+              <ComboBox ItemsSource="{Binding Palettes}" SelectedItem="{Binding SelectedPalette}"
+                        HorizontalAlignment="Stretch" FontSize="14" />
             </StackPanel>
           </StackPanel>
           </ScrollViewer>

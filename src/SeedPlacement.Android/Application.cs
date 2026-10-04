@@ -13,7 +13,8 @@ public sealed class Application : AvaloniaAndroidApplication<App.App>
 
     public override void OnCreate()
     {
-        RunSharing.Share = ShareSheet.ShareAsync;
+        PhoneFiles.ShareRun = ShareSheet.ShareAsync;
+        PhoneFiles.SaveToDownloads = Downloads.SaveAsync;
         base.OnCreate();
     }
 }
