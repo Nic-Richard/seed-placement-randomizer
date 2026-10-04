@@ -48,6 +48,9 @@ public sealed partial class MainView : UserControl
         var version = Assembly.GetExecutingAssembly().GetName().Version;
         VersionText.Text = $"Version {version?.ToString(3)}";
         AddHandler(KeyDownEvent, OnKeyDown, RoutingStrategies.Tunnel);
+        AddHandler(DragDrop.DragOverEvent, OnDragOver);
+        AddHandler(DragDrop.DragLeaveEvent, OnDragLeave);
+        AddHandler(DragDrop.DropEvent, OnDrop);
     }
 
     private TopLevel? Host => TopLevel.GetTopLevel(this);
@@ -227,6 +230,12 @@ public sealed partial class MainView : UserControl
     private void OnKeyDown(object? sender, KeyEventArgs e)
     {
         if (_vm is null || Host?.FocusManager?.GetFocusedElement() is TextBox) return;
+        if (ConfirmLayer.IsVisible)
+        {
+            if (e.Key == Key.Escape) CloseConfirm(false);
+            e.Handled = true;
+            return;
+        }
         switch (e.Key)
         {
             case Key.Escape when _vm.IsInspecting:
@@ -436,18 +445,75 @@ public sealed partial class MainView : UserControl
             AllowMultiple = false,
             FileTypeFilter = [RunFileType],
         });
-        if (files.Count == 0) return;
+        if (files.Count > 0) await OpenRunAsync(files[0]);
+    }
+
+    private async Task OpenRunAsync(IStorageItem item)
+    {
+        if (_vm is null || item is not IStorageFile file) return;
+        string text;
         try
         {
-            await using var stream = await files[0].OpenReadAsync();
+            await using var stream = await file.OpenReadAsync();
             using var reader = new StreamReader(stream);
-            var text = await reader.ReadToEndAsync();
-            ShowExportStatus(_vm.OpenRunFile(text) ? $"Opened {files[0].Name}." : $"{files[0].Name} isn't a seed run.");
+            text = await reader.ReadToEndAsync();
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
             ShowExportStatus($"Couldn't open the run: {ex.Message}");
+            return;
         }
+
+        if (RunRecord.FromJson(text) is null)
+        {
+            ShowExportStatus($"{file.Name} isn't a seed run.");
+            return;
+        }
+        if (_vm.Occupied > 0 && !await ConfirmReplace(file.Name, _vm.Occupied)) return;
+        ShowExportStatus(_vm.OpenRunFile(text) ? $"Opened {file.Name}." : $"{file.Name} isn't a seed run.");
+    }
+
+    private TaskCompletionSource<bool>? _confirm;
+
+    private Task<bool> ConfirmReplace(string name, int dishes)
+    {
+        _confirm?.TrySetResult(false);
+        _confirm = new TaskCompletionSource<bool>();
+        ConfirmText.Text = $"Opening {name} replaces the {dishes} {(dishes == 1 ? "dish" : "dishes")} on the rack. " +
+            "Save the current run first if you still need it.";
+        ConfirmLayer.IsVisible = true;
+        return _confirm.Task;
+    }
+
+    private void CloseConfirm(bool replace)
+    {
+        ConfirmLayer.IsVisible = false;
+        _confirm?.TrySetResult(replace);
+        _confirm = null;
+    }
+
+    private void OnConfirmCancel(object? sender, RoutedEventArgs e) => CloseConfirm(false);
+
+    private void OnConfirmReplace(object? sender, RoutedEventArgs e) => CloseConfirm(true);
+
+    private static bool IsRunFile(DragEventArgs e) =>
+        e.DataTransfer.TryGetFiles() is [IStorageFile file]
+        && file.Name.EndsWith($".{MainViewModel.RunFileExtension}", StringComparison.OrdinalIgnoreCase);
+
+    private void OnDragOver(object? sender, DragEventArgs e)
+    {
+        var accept = IsRunFile(e) && _vm?.IsInspecting == false && !ConfirmLayer.IsVisible;
+        e.DragEffects = accept ? DragDropEffects.Copy : DragDropEffects.None;
+        DropHint.IsVisible = accept;
+    }
+
+    private void OnDragLeave(object? sender, DragEventArgs e) => DropHint.IsVisible = false;
+
+    private async void OnDrop(object? sender, DragEventArgs e)
+    {
+        DropHint.IsVisible = false;
+        if (IsRunFile(e) && _vm?.IsInspecting == false && e.DataTransfer.TryGetFiles() is [var file])
+            await OpenRunAsync(file);
     }
 
     private void OnRunOpened(object? sender, EventArgs e)

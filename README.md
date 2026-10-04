@@ -64,6 +64,8 @@ Print templates at actual size (100%). Each page has a line that should measure 
 ### Moving a run between a computer and a phone
 
 Under **Run**, **Save** writes the whole rack to a `.seedrun` file, and **Open** replaces the rack with one.
+On a computer you can also drag a `.seedrun` file onto the window. The app asks before replacing a rack
+that has dishes on it.
 The file holds each dish's layout code, slot, label and seed type, so the other device rebuilds the
 exact same dishes.
 
