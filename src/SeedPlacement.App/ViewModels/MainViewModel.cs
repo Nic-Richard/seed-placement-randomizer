@@ -89,7 +89,7 @@ public sealed class MainViewModel : ObservableObject
 
     public RelayCommand ShareRunCommand { get; }
 
-    public bool CanShareRun => PhoneFiles.ShareRun is not null;
+    public bool CanShareRun => Phone.ShareRun is not null;
 
     public Rack Rack => _rack;
 
@@ -355,7 +355,7 @@ public sealed class MainViewModel : ObservableObject
     public string RunFileName() => $"Seed run {DateTime.Now:yyyy-MM-dd HHmm}";
 
     private Task ShareRunAsync() =>
-        PhoneFiles.ShareRun?.Invoke($"{RunFileName()}.{RunFileExtension}", RunFileText()) ?? Task.CompletedTask;
+        Phone.ShareRun?.Invoke($"{RunFileName()}.{RunFileExtension}", RunFileText()) ?? Task.CompletedTask;
 
     public string RunFileText() => RunRecord.From(_rack).ToJson();
 

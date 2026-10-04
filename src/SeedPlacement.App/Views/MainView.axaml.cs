@@ -58,9 +58,8 @@ public sealed partial class MainView : UserControl
     protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
     {
         base.OnAttachedToVisualTree(e);
-        if (Host?.InsetsManager is not { } insets) return;
-        insets.SafeAreaChanged += OnSafeAreaChanged;
-        ApplySafeArea(insets.SafeAreaPadding);
+        if (Host?.InsetsManager is { } insets) insets.SafeAreaChanged += OnSafeAreaChanged;
+        RefreshSafeArea();
     }
 
     protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
@@ -69,7 +68,14 @@ public sealed partial class MainView : UserControl
         base.OnDetachedFromVisualTree(e);
     }
 
-    private void OnSafeAreaChanged(object? sender, SafeAreaChangedArgs e) => ApplySafeArea(e.SafeAreaPadding);
+    private void OnSafeAreaChanged(object? sender, SafeAreaChangedArgs e) => RefreshSafeArea();
+
+    // Avalonia's own figure comes back in physical pixels on some screens, so Android measures the bars itself.
+    private void RefreshSafeArea()
+    {
+        var safe = Phone.SafeArea?.Invoke() ?? (Phone.SafeArea is null ? Host?.InsetsManager?.SafeAreaPadding : null);
+        if (safe is { } area && area != _safeArea) ApplySafeArea(area);
+    }
 
     private void ApplySafeArea(Thickness safe)
     {
@@ -88,6 +94,7 @@ public sealed partial class MainView : UserControl
     protected override void OnSizeChanged(SizeChangedEventArgs e)
     {
         base.OnSizeChanged(e);
+        RefreshSafeArea();
         ApplyLayout(e.NewSize.Width < CompactWidth, e.NewSize);
         SizeInspector(e.NewSize);
     }
@@ -105,7 +112,7 @@ public sealed partial class MainView : UserControl
     private double CompactDish(Size client)
     {
         var usable = client.Height - _safeArea.Top - _safeArea.Bottom - 24;
-        return Math.Min(client.Width - 24, Math.Min(usable * 0.42, usable - 440));
+        return Math.Min(client.Width - 24, Math.Min(usable * 0.42, usable - 500));
     }
 
     private void ApplyLayout(bool compact, Size size)
@@ -381,7 +388,7 @@ public sealed partial class MainView : UserControl
 
         try
         {
-            if (PhoneFiles.SaveToDownloads is { } save)
+            if (Phone.SaveToDownloads is { } save)
             {
                 var place = await save(name, files);
                 ShowExportStatus($"Saved the seed positions, rack picture and printable templates to {place}.");

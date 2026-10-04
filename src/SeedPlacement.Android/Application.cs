@@ -13,8 +13,9 @@ public sealed class Application : AvaloniaAndroidApplication<App.App>
 
     public override void OnCreate()
     {
-        PhoneFiles.ShareRun = ShareSheet.ShareAsync;
-        PhoneFiles.SaveToDownloads = Downloads.SaveAsync;
+        Phone.ShareRun = ShareSheet.ShareAsync;
+        Phone.SaveToDownloads = Downloads.SaveAsync;
+        Phone.SafeArea = SystemBars.SafeArea;
         base.OnCreate();
     }
 }
