@@ -177,7 +177,7 @@ def over(rgb, alpha, layer_alpha, color):
 
 
 def dish_art(rgb, alpha, s, radius):
-    """Paper, five seeds, glass rim and a sprout, drawn over rgb/alpha. Also returns a silhouette."""
+    """Paper, five seeds and a glass rim, drawn over rgb/alpha. Also returns a silhouette."""
     y, x = np.mgrid[0:s, 0:s].astype(float) + 0.5
     c = s / 2
     d = np.hypot(x - c, y - c)
@@ -206,11 +206,8 @@ def dish_art(rgb, alpha, s, radius):
     angle = np.arctan2(y - c, x - c)
     lit = 0.35 + 0.65 * np.clip(np.cos(angle + 2.3), 0, 1) ** 2
     rgb, alpha = over(rgb, alpha, ring * 0.7, lit[..., None] * np.array([0.93, 0.96, 1.0]))
-    sprout = np.clip(1 - np.hypot(x - c - R * 0.72, y - c + R * 0.72) / (unit * 0.07), 0, 1)
-    sprout = np.clip(sprout * 6, 0, 1)
-    rgb, alpha = over(rgb, alpha, sprout, np.array([0.66, 0.86, 0.43]))
 
-    silhouette = np.maximum.reduce([ring, np.asarray(seeds)[..., 3] / 255, sprout])
+    silhouette = np.maximum(ring, np.asarray(seeds)[..., 3] / 255)
     return rgb, alpha, silhouette
 
 
