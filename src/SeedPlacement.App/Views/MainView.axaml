@@ -7,6 +7,7 @@
              Background="{DynamicResource BenchBrush}">
 
   <Grid x:Name="Root" Focusable="True" FocusAdorner="{x:Null}" PointerPressed="OnRootPressed"
+        DragDrop.AllowDrop="True"
         Background="{DynamicResource BenchBrush}">
     <Border>
       <Border.Background>
@@ -322,6 +323,28 @@
           </DockPanel>
         </Border>
       </Grid>
+    </Grid>
+
+    <Grid x:Name="DropHint" IsVisible="False" IsHitTestVisible="False" Background="{DynamicResource OverlayBrush}">
+      <c:TapeStrip HorizontalAlignment="Center" VerticalAlignment="Center" RenderTransform="rotate(-2deg)">
+        <TextBlock Text="Drop to open this run" Margin="22,8,22,6" FontSize="24" FontWeight="Bold"
+                   Foreground="{StaticResource TapeInkBrush}" />
+      </c:TapeStrip>
+    </Grid>
+
+    <Grid x:Name="ConfirmLayer" IsVisible="False" Background="{DynamicResource OverlayBrush}">
+      <Border Background="{DynamicResource SurfaceBrush}" CornerRadius="14" Padding="26" MaxWidth="440" Margin="24"
+              BorderBrush="{DynamicResource HairlineBrush}" BorderThickness="1"
+              HorizontalAlignment="Center" VerticalAlignment="Center">
+        <StackPanel Spacing="10">
+          <TextBlock Text="Replace the rack?" FontSize="20" FontWeight="Bold" />
+          <TextBlock x:Name="ConfirmText" Classes="muted" FontSize="14" TextWrapping="Wrap" LineHeight="20" />
+          <StackPanel Orientation="Horizontal" Spacing="10" Margin="0,10,0,0" HorizontalAlignment="Right">
+            <Button Classes="ghost" Content="Cancel" Click="OnConfirmCancel" ToolTip.Tip="Esc" />
+            <Button Classes="ghost danger" Content="Replace rack" Click="OnConfirmReplace" />
+          </StackPanel>
+        </StackPanel>
+      </Border>
     </Grid>
   </Grid>
 </UserControl>
