@@ -12,6 +12,7 @@ from scipy.ndimage import gaussian_filter
 
 OUT = Path(__file__).resolve().parent.parent / "src" / "SeedPlacement.App" / "Assets"
 MACOS = Path(__file__).resolve().parent.parent / "packaging" / "macos"
+ANDROID = Path(__file__).resolve().parent.parent / "src" / "SeedPlacement.Android" / "Resources" / "drawable"
 SS = 3  # supersampling factor
 
 
@@ -169,7 +170,7 @@ def bench(size=512):
 
 
 def icon(size=1024):
-    """Dark rounded tile with a glass dish holding five seeds: the window icon, a 64 px PNG and the macOS .icns."""
+    """Dark rounded tile with a glass dish holding five seeds: the window icon, a 64 px PNG, the macOS .icns and the Android launcher icon."""
     s = size * SS
     y, x = np.mgrid[0:s, 0:s].astype(float) + 0.5
     c = s / 2
@@ -218,6 +219,8 @@ def icon(size=1024):
     img.resize((64, 64), Image.LANCZOS).save(OUT / "icon-64.png", optimize=True)
     MACOS.mkdir(parents=True, exist_ok=True)
     img.save(MACOS / "icon.icns")
+    ANDROID.mkdir(parents=True, exist_ok=True)
+    img.resize((192, 192), Image.LANCZOS).save(ANDROID / "icon.png", optimize=True)
 
 
 if __name__ == "__main__":

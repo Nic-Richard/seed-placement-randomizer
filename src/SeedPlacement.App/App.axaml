@@ -4,6 +4,6 @@
              RequestedThemeVariant="Dark">
   <Application.Styles>
     <FluentTheme />
-    <StyleInclude Source="avares://SeedPlacementRandomizer/Styles/Theme.axaml" />
+    <StyleInclude Source="avares://SeedPlacement.App/Styles/Theme.axaml" />
   </Application.Styles>
 </Application>

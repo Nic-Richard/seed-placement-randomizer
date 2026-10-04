@@ -30,5 +30,5 @@ public sealed record SeedKindInfo(SeedKind Kind, string Name, double LengthMm, d
     public string AssetKey => Name.ToLowerInvariant().Replace(' ', '-');
 
     public Uri SpriteUri(int variant) =>
-        new($"avares://SeedPlacementRandomizer/Assets/Seeds/{AssetKey}-{variant}.png");
+        new($"avares://SeedPlacement.App/Assets/Seeds/{AssetKey}-{variant}.png");
 }

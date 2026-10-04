@@ -9,7 +9,7 @@ version="$2"
 out="$3"
 app="$out/Seed Placement Randomizer.app"
 
-dotnet publish src/SeedPlacement.App -c Release -r "$rid" -o "$out/publish-$rid" -p:Version="$version"
+dotnet publish src/SeedPlacement.Desktop -c Release -r "$rid" -o "$out/publish-$rid" -p:Version="$version"
 
 rm -rf "$app"
 mkdir -p "$app/Contents/MacOS" "$app/Contents/Resources"

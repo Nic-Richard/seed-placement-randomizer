@@ -1,8 +1,8 @@
 # Seed Placement Randomizer
 
-A desktop app that removes unconscious bias from seed bioassays. It places seeds at random inside a
-petri dish, then puts each dish in a random slot on a 10-slot rack. It runs offline on Windows,
-macOS and Linux, and is built to be shown on a projector as well as used at the bench.
+An app that removes unconscious bias from seed bioassays. It places seeds at random inside a petri
+dish, then puts each dish in a random slot on a 10-slot rack. It runs offline on Windows, macOS,
+Linux and Android, and is built to be shown on a projector as well as used at the bench.
 
 ![The rack with seven randomized dishes](docs/screenshots/rack.png)
 
@@ -18,6 +18,8 @@ macOS and Linux, and is built to be shown on a projector as well as used at the 
 - Exports a run as a CSV of seed positions, a picture of the rack, and printable 1:1 templates to
   set each dish on
 - Saves the run as you go and restores it the next time the app opens
+- Saves a run to a file that the desktop app or the phone app can open, so a run set up on a computer
+  can go to the bench on a phone, and back
 - Removes single dishes or clears the rack for the next run
 
 ![The dish inspector](docs/screenshots/inspector.png)
@@ -52,34 +54,63 @@ Download the latest build from the [Releases page](https://github.com/Nic-Richar
   move the app to Applications. The first time, right-click it and choose **Open**.
 - **Linux:** extract `SeedPlacementRandomizer-<version>-linux-x64.tar.gz` and run
   `./SeedPlacementRandomizer`. It is self-contained and needs no .NET install.
+- **Android:** open `SeedPlacementRandomizer-<version>-android.apk` on the phone. Android asks once
+  to allow installs from the browser or file app you opened it with. Later versions install over the
+  old one and keep the saved run.
 
 Print templates at actual size (100%). Each page has a line that should measure 50 mm.
+
+### Moving a run between a computer and a phone
+
+**Save run** writes the whole rack to a `.seedrun` file, and **Open run** replaces the rack with one.
+The file holds each dish's layout code, slot, label and seed type, so the other device rebuilds the
+exact same dishes.
+
+- **Over a USB cable:** on the phone, save the run to Downloads. Plug the phone in, choose **File
+  transfer** in the USB notification, and the phone appears as a drive on the computer. Copy the file
+  across and open it in the desktop app. To go the other way, copy a saved run into the phone's
+  Download folder and open it from the phone app. Macs need
+  [Android File Transfer](https://www.android.com/filetransfer/) or a similar app to see the phone.
+- **Any other way:** the phone app's **Share run** sends the file through the share sheet, to email,
+  a chat app or cloud storage.
+
+<img src="docs/screenshots/phone-rack.png" alt="The phone app" width="300">
 
 ### Building from source
 
 Requires the [.NET 10 SDK](https://dotnet.microsoft.com/download).
 
 ```sh
-dotnet run --project src/SeedPlacement.App
-dotnet test
+dotnet run --project src/SeedPlacement.Desktop
+dotnet test tests/SeedPlacement.Tests
+```
+
+The Android app needs the Android workload (`dotnet workload install android`). Build a release APK
+with:
+
+```sh
+dotnet publish src/SeedPlacement.Android -c Release -f net10.0-android -o publish/android
 ```
 
 Publish a self-contained single-file build for Windows or Linux, or package the macOS app on a Mac:
 
 ```sh
-dotnet publish src/SeedPlacement.App -c Release -r win-x64 -o publish/win-x64
-dotnet publish src/SeedPlacement.App -c Release -r linux-x64 -o publish/linux-x64
+dotnet publish src/SeedPlacement.Desktop -c Release -r win-x64 -o publish/win-x64
+dotnet publish src/SeedPlacement.Desktop -c Release -r linux-x64 -o publish/linux-x64
 packaging/macos/package.sh osx-arm64 1.0.0 dist
 ```
 
-Pushing a tag such as `v1.0.0` builds all three platforms on GitHub Actions and opens a draft release
-using the notes in `docs/releases/`.
+Pushing a tag such as `v1.0.0` builds every platform on GitHub Actions and opens a draft release
+using the notes in `docs/releases/`. The APK is signed with a release key kept in the repository's
+Actions secrets (`ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`).
 
 ## Repository structure
 
 ```text
 src/SeedPlacement.Core/        Geometry, PRNG, sampling, layout codes, rack assignment
-src/SeedPlacement.App/         Avalonia desktop app: views, view models, drawing, motion
+src/SeedPlacement.App/         Shared Avalonia UI: views, view models, drawing, motion
+src/SeedPlacement.Desktop/     Windows, macOS and Linux app
+src/SeedPlacement.Android/     Android app and its share sheet
 tests/SeedPlacement.Tests/     Tests for Core, including statistical checks
 tools/SeedPlacement.Snapshots/ Renders the app offscreen to refresh the screenshots
 assets-src/                    Script that generates the seed, paper, bench grain and icon images

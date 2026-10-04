@@ -16,5 +16,21 @@ jobs:
       - uses: actions/setup-dotnet@v6
         with:
           global-json-file: global.json
-      - run: dotnet build -c Release
-      - run: dotnet test -c Release --no-build
+      # The Android app builds in its own job, so these runners skip the Android workload.
+      - run: |
+          dotnet build src/SeedPlacement.Desktop -c Release
+          dotnet build tools/SeedPlacement.Snapshots -c Release
+          dotnet build tests/SeedPlacement.Tests -c Release
+        shell: bash
+      - run: dotnet test tests/SeedPlacement.Tests -c Release --no-build
+
+  android:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+      - run: dotnet workload install android
+      - run: dotnet build src/SeedPlacement.Android -t:InstallAndroidDependencies -f net10.0-android -p:AcceptAndroidSDKLicenses=True
+      - run: dotnet build src/SeedPlacement.Android -c Release

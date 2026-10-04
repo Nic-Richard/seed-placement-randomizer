@@ -53,7 +53,7 @@ public sealed class DishView : Control
     private static readonly Lazy<Bitmap> Paper = new(() => Load("paper.png"));
 
     private static readonly Typeface NumberFace =
-        new(new FontFamily("avares://SeedPlacementRandomizer/Assets/Fonts#Atkinson Hyperlegible"), FontStyle.Normal, FontWeight.Bold);
+        new(new FontFamily("avares://SeedPlacement.App/Assets/Fonts#Atkinson Hyperlegible"), FontStyle.Normal, FontWeight.Bold);
 
     static DishView()
     {
@@ -347,5 +347,5 @@ public sealed class DishView : Control
     }
 
     private static Bitmap Load(string name) =>
-        new(AssetLoader.Open(new Uri($"avares://SeedPlacementRandomizer/Assets/{name}")));
+        new(AssetLoader.Open(new Uri($"avares://SeedPlacement.App/Assets/{name}")));
 }
